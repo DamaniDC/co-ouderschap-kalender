@@ -503,24 +503,23 @@ export default function CalendarPage({ currentUserEmail }: Props) {
   // ------------------------------
 
   useEffect(() => {
-    const interval = setInterval(async () => {
-      const { data: rows, error } = await supabase
-        .from("change_requests")
-        .select("id, requested_by, status")
-        .eq("status", "pending");
+  const interval = setInterval(async () => {
+    const { data: rows, error } = await supabase
+      .from("change_requests")
+      .select("id, requested_by, status")
+      .eq("status", "pending");
 
-      if (error || !rows) return;
+    if (error || !rows) return;
 
-      const newForMe = rows.filter((r) => r.requested_by !== currentUserEmail);
+    const newForMe = rows.filter((r) => r.requested_by !== currentUserEmail);
 
-      if (newForMe.length > pendingForMe.length) {
-        showMessage("Nieuw wijzigingsverzoek ontvangen.");
-        await loadRequests();
-      }
-    }, 10000);
+    if (newForMe.length > 0) {
+      await loadRequests();
+    }
+  }, 10000);
 
-    return () => clearInterval(interval);
-  }, [currentUserEmail, pendingForMe.length]);
+  return () => clearInterval(interval);
+}, [currentUserEmail]);
 
   // ==========================================================
   // HOOFDSTUK: AFGELEIDE DATA
