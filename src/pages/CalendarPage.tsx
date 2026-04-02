@@ -47,6 +47,7 @@ type ChangeRequestRow = {
 type DayRow = {
   date: string;
   type: string;
+  note: string | null;
 };
 
 type Props = {
@@ -136,6 +137,12 @@ const WEEKDAYS = ["M", "D", "W", "D", "V", "Z", "Z"];
 
 function formatKey(date: Date) {
   return date.toISOString().slice(0, 10);
+}
+
+function getTodayKey() {
+  const now = new Date();
+  const local = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  return formatKey(local);
 }
 
 function getMonthName(year: number, month: number) {
@@ -344,24 +351,20 @@ export default function CalendarPage({ currentUserEmail }: Props) {
   const months = useMemo(() => buildMonths(year), []);
   const allDays = useMemo(() => months.flatMap((m) => m.cells), [months]);
   const realDayCount = useMemo(() => allDays.filter(Boolean).length, [allDays]);
+  const todayKey = useMemo(() => getTodayKey(), []);
 
   // ==========================================================
   // HOOFDSTUK: STATE
   // ==========================================================
 
-  // ------------------------------
-  // SUB: Kalender state
-  // ------------------------------
-
   const [selected, setSelected] = useState<DayType>("stephan");
   const [data, setData] = useState<Record<string, DayType>>({});
   const [draftData, setDraftData] = useState<Record<string, DayType>>({});
+  const [notesByDate, setNotesByDate] = useState<Record<string, string>>({});
+  const [hoveredNoteDate, setHoveredNoteDate] = useState<string | null>(null);
+  const [openedNoteDate, setOpenedNoteDate] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-
-  // ------------------------------
-  // SUB: UI state
-  // ------------------------------
 
   const [showClearModal, setShowClearModal] = useState(false);
   const [toolbarCollapsed, setToolbarCollapsed] = useState(false);
@@ -372,20 +375,12 @@ export default function CalendarPage({ currentUserEmail }: Props) {
     useState<ChangeRequestRow | null>(null);
   const [deletingRequest, setDeletingRequest] = useState(false);
 
-  // ------------------------------
-  // SUB: Aanvragen state
-  // ------------------------------
-
   const [requests, setRequests] = useState<ChangeRequestRow[]>([]);
   const [requestsLoading, setRequestsLoading] = useState(false);
   const [requestComment, setRequestComment] = useState("");
   const [reviewComments, setReviewComments] = useState<Record<string, string>>(
     {}
   );
-
-  // ------------------------------
-  // SUB: Wijzigen modus state
-  // ------------------------------
 
   const [isEditMode, setIsEditMode] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
@@ -398,10 +393,6 @@ export default function CalendarPage({ currentUserEmail }: Props) {
   // HOOFDSTUK: UI HELPERS
   // ==========================================================
 
-  // ------------------------------
-  // SUB: Tijdelijke boodschap tonen
-  // ------------------------------
-
   function showMessage(message: string) {
     setUiMessage(message);
     window.clearTimeout((window as any).__msgTimer);
@@ -413,10 +404,6 @@ export default function CalendarPage({ currentUserEmail }: Props) {
   // ==========================================================
   // HOOFDSTUK: DATA LADEN
   // ==========================================================
-
-  // ------------------------------
-  // SUB: Aanvragen laden
-  // ------------------------------
 
   async function loadRequests() {
     setRequestsLoading(true);
@@ -439,16 +426,12 @@ export default function CalendarPage({ currentUserEmail }: Props) {
     setRequestsLoading(false);
   }
 
-  // ------------------------------
-  // SUB: Kalender laden
-  // ------------------------------
-
   async function loadCalendar() {
     setLoading(true);
 
     const { data: rows, error } = await supabase
       .from("calendar_entries")
-      .select("date, type");
+      .select("date, type, note");
 
     if (error) {
       console.error("Fout bij laden kalender:", error);
@@ -457,14 +440,21 @@ export default function CalendarPage({ currentUserEmail }: Props) {
     }
 
     const mapped: Record<string, DayType> = {};
+    const noteMap: Record<string, string> = {};
+
     (rows as DayRow[] | null)?.forEach((row) => {
       if (isValidDayType(row.type)) {
         mapped[row.date] = row.type;
+      }
+
+      if (row.note?.trim()) {
+        noteMap[row.date] = row.note.trim();
       }
     });
 
     setData(mapped);
     setDraftData(mapped);
+    setNotesByDate(noteMap);
     setLoading(false);
   }
 
@@ -472,18 +462,10 @@ export default function CalendarPage({ currentUserEmail }: Props) {
   // HOOFDSTUK: EFFECTS
   // ==========================================================
 
-  // ------------------------------
-  // SUB: Eerste keer laden
-  // ------------------------------
-
   useEffect(() => {
     void loadCalendar();
     void loadRequests();
   }, []);
-
-  // ------------------------------
-  // SUB: Deep link naar specifiek verzoek
-  // ------------------------------
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -501,10 +483,6 @@ export default function CalendarPage({ currentUserEmail }: Props) {
       }, 500);
     }
   }, [requests.length]);
-
-  // ------------------------------
-  // SUB: Polling voor nieuwe verzoeken
-  // ------------------------------
 
   useEffect(() => {
     const interval = setInterval(async () => {
@@ -528,10 +506,6 @@ export default function CalendarPage({ currentUserEmail }: Props) {
   // ==========================================================
   // HOOFDSTUK: AFGELEIDE DATA
   // ==========================================================
-
-  // ------------------------------
-  // SUB: Openstaande verzoeken
-  // ------------------------------
 
   const pendingForMe = useMemo(
     () =>
@@ -562,10 +536,6 @@ export default function CalendarPage({ currentUserEmail }: Props) {
     [pendingForMe.length, myPendingRequests.length]
   );
 
-  // ------------------------------
-  // SUB: Dag index mapping
-  // ------------------------------
-
   const dayIndexByKey = useMemo(() => {
     const map: Record<string, number> = {};
     allDays.forEach((d, i) => {
@@ -573,10 +543,6 @@ export default function CalendarPage({ currentUserEmail }: Props) {
     });
     return map;
   }, [allDays]);
-
-  // ------------------------------
-  // SUB: Preview data tijdens slepen
-  // ------------------------------
 
   function buildPreviewData() {
     if (
@@ -611,20 +577,12 @@ export default function CalendarPage({ currentUserEmail }: Props) {
 
   const previewData = buildPreviewData();
 
-  // ------------------------------
-  // SUB: Gewijzigde conceptdata?
-  // ------------------------------
-
   const hasDraftChanges = useMemo(() => {
     const keys = Array.from(
       new Set([...Object.keys(data), ...Object.keys(draftData)])
     );
     return keys.some((key) => data[key] !== draftData[key]);
   }, [data, draftData]);
-
-  // ------------------------------
-  // SUB: Tellingen overzicht
-  // ------------------------------
 
   const resolvedTotals = useMemo(() => {
     let stephan = 0;
@@ -705,10 +663,6 @@ export default function CalendarPage({ currentUserEmail }: Props) {
   // HOOFDSTUK: AANVRAGEN
   // ==========================================================
 
-  // ------------------------------
-  // SUB: Nieuw wijzigingsverzoek maken
-  // ------------------------------
-
   async function createChangeRequest(
     previousData: Record<string, DayType>,
     nextData: Record<string, DayType>,
@@ -771,10 +725,6 @@ export default function CalendarPage({ currentUserEmail }: Props) {
     }
   }
 
-  // ------------------------------
-  // SUB: Verzoek goedkeuren
-  // ------------------------------
-
   async function approveRequest(request: ChangeRequestRow) {
     try {
       const changes = (request.new_value || "")
@@ -785,6 +735,7 @@ export default function CalendarPage({ currentUserEmail }: Props) {
       const upserts: {
         date: string;
         type: string;
+        note: string | null;
         updated_by: string;
         updated_at: string;
       }[] = [];
@@ -806,6 +757,7 @@ export default function CalendarPage({ currentUserEmail }: Props) {
           upserts.push({
             date,
             type: value,
+            note: request.request_comment?.trim() || null,
             updated_by: request.requested_by,
             updated_at: new Date().toISOString(),
           });
@@ -864,10 +816,6 @@ export default function CalendarPage({ currentUserEmail }: Props) {
     }
   }
 
-  // ------------------------------
-  // SUB: Verzoek afkeuren
-  // ------------------------------
-
   async function rejectRequest(request: ChangeRequestRow) {
     try {
       const reviewComment = reviewComments[request.id]?.trim() || null;
@@ -904,94 +852,75 @@ export default function CalendarPage({ currentUserEmail }: Props) {
     }
   }
 
-  // ------------------------------
-  // SUB: Verwijder popup openen
-  // ------------------------------
-
   function openDeleteRequestModal(request: ChangeRequestRow) {
     setDeleteRequestTarget(request);
   }
-
-  // ------------------------------
-  // SUB: Verwijder popup sluiten
-  // ------------------------------
 
   function closeDeleteRequestModal() {
     if (deletingRequest) return;
     setDeleteRequestTarget(null);
   }
 
-  // ------------------------------
-// SUB: Verzoek verwijderen
-// ------------------------------
+  async function confirmDeleteRequest() {
+    if (!deleteRequestTarget) return;
 
-async function confirmDeleteRequest() {
-  if (!deleteRequestTarget) return;
+    setDeletingRequest(true);
 
-  setDeletingRequest(true);
+    try {
+      const request = deleteRequestTarget;
 
-  try {
-    const request = deleteRequestTarget;
+      const { error } = await supabase
+        .from("change_requests")
+        .delete()
+        .eq("id", request.id);
 
-    const { error } = await supabase
-      .from("change_requests")
-      .delete()
-      .eq("id", request.id);
+      if (error) throw error;
 
-    if (error) throw error;
-
-    const recipients = Array.from(
-      new Set(
-        [request.requested_by, currentUserEmail].filter(
-          (value): value is string => Boolean(value)
+      const recipients = Array.from(
+        new Set(
+          [request.requested_by, currentUserEmail].filter(
+            (value): value is string => Boolean(value)
+          )
         )
-      )
-    );
+      );
 
-    for (const recipient of recipients) {
-      await sendDeletedNotification({
-        to: recipient,
-        requestId: request.id,
-        requester: request.requested_by,
-        changedDates: request.changed_dates.split(", ").filter(Boolean),
-        comment: request.request_comment,
-        reviewedBy: currentUserEmail,
-        oldValue: request.old_value,
-        newValue: request.new_value,
-      });
+      for (const recipient of recipients) {
+        await sendDeletedNotification({
+          to: recipient,
+          requestId: request.id,
+          requester: request.requested_by,
+          changedDates: request.changed_dates.split(", ").filter(Boolean),
+          comment: request.request_comment,
+          reviewedBy: currentUserEmail,
+          oldValue: request.old_value,
+          newValue: request.new_value,
+        });
+      }
+
+      await loadRequests();
+      setDeleteRequestTarget(null);
+      showMessage("Verzoek verwijderd.");
+    } catch (error) {
+      console.error("Fout bij verwijderen verzoek:", error);
+      showMessage("Er liep iets mis bij het verwijderen.");
+    } finally {
+      setDeletingRequest(false);
     }
-
-    await loadRequests();
-    setDeleteRequestTarget(null);
-    showMessage("Verzoek verwijderd.");
-  } catch (error) {
-    console.error("Fout bij verwijderen verzoek:", error);
-    showMessage("Er liep iets mis bij het verwijderen.");
-  } finally {
-    setDeletingRequest(false);
   }
-}
 
   // ==========================================================
   // HOOFDSTUK: WIJZIGEN MODUS
   // ==========================================================
 
-  // ------------------------------
-  // SUB: Wijzigen modus starten
-  // ------------------------------
-
   function startEditMode() {
     setDraftData(cloneData(data));
     setRequestComment("");
     setIsEditMode(true);
+    setOpenedNoteDate(null);
     showMessage(
-      "Wijzigen modus actief. Maak je wijzigingen en verstuur daarna de aanvraag."
+      "Wijzigen modus actief. Kies een type in de zwevende kader en maak je wijzigingen."
     );
   }
-
-  // ------------------------------
-  // SUB: Wijzigen modus annuleren
-  // ------------------------------
 
   function cancelEditMode() {
     setIsDragging(false);
@@ -1002,12 +931,9 @@ async function confirmDeleteRequest() {
     setDraftData(cloneData(data));
     setRequestComment("");
     setIsEditMode(false);
+    setOpenedNoteDate(null);
     showMessage("Wijzigen modus geannuleerd.");
   }
-
-  // ------------------------------
-  // SUB: Drag wijziging toepassen
-  // ------------------------------
 
   function applyCurrentDragToDraft() {
     if (
@@ -1033,17 +959,9 @@ async function confirmDeleteRequest() {
     }
   }
 
-  // ------------------------------
-  // SUB: Huidige aanvraag versturen
-  // ------------------------------
-
   async function submitCurrentRequest() {
     await createChangeRequest(data, draftData, requestComment);
   }
-
-  // ------------------------------
-  // SUB: Concept volledig leegmaken
-  // ------------------------------
 
   function clearAllConfirmed() {
     setDraftData({});
@@ -1056,10 +974,6 @@ async function confirmDeleteRequest() {
   // ==========================================================
   // HOOFDSTUK: AUTH
   // ==========================================================
-
-  // ------------------------------
-  // SUB: Uitloggen
-  // ------------------------------
 
   async function handleLogout() {
     await supabase.auth.signOut();
@@ -1285,7 +1199,8 @@ async function confirmDeleteRequest() {
                   <div>
                     <div className="section-title">Maak je wijzigingen</div>
                     <div className="section-subtitle">
-                      Kies een type in de zwevende kader en maak je wijzigingen, voeg eventueel een opmerking toe en verstuur dan de aanvraag.
+                      Kies een type in de zwevende kader en maak je wijzigingen,
+                      voeg eventueel een opmerking toe en verstuur dan de aanvraag.
                     </div>
                   </div>
 
@@ -1356,45 +1271,87 @@ async function confirmDeleteRequest() {
                         const cfg = owner ? DAY_TYPES[owner] : null;
                         const globalIndex = dayIndexByKey[key];
                         const changedLive = draftData[key] !== data[key];
+                        const isToday = key === todayKey;
+                        const noteText = notesByDate[key];
+                        const hasNote = Boolean(noteText?.trim());
+                        const showNote =
+                          (hoveredNoteDate === key || openedNoteDate === key) &&
+                          hasNote &&
+                          !isEditMode;
+
                         const titleText = changedLive
                           ? `Wijziging: ${data[key] || "leeg"} → ${draftData[key] || "leeg"}`
                           : cfg?.label || "Leeg";
 
                         return (
-                          <button
+                          <div
                             key={key}
-                            className={`day ${cfg ? "filled" : ""} ${
-                              isEditMode ? "editable" : "readonly"
-                            } ${changedLive ? "changed-live" : ""}`}
-                            onMouseDown={() => {
-                              if (!isEditMode) return;
-
-                              const existingOwner = draftData[key];
-                              const mode: DragMode =
-                                existingOwner === selected ? "unset" : "set";
-
-                              setIsDragging(true);
-                              setDragStartIndex(globalIndex);
-                              setDragCurrentIndex(globalIndex);
-                              setDragMode(mode);
-                              setBaseData(cloneData(draftData));
-                            }}
+                            className="day-wrapper"
                             onMouseEnter={() => {
-                              if (isEditMode && isDragging) {
-                                setDragCurrentIndex(globalIndex);
+                              if (!isEditMode && hasNote) {
+                                setHoveredNoteDate(key);
                               }
                             }}
-                            style={{
-                              backgroundColor: cfg ? cfg.color : "#ffffff",
-                              color: cfg ? cfg.textColor : "#334155",
-                              borderColor: cfg ? cfg.color : "#e2e8f0",
-                              cursor: isEditMode ? "pointer" : "default",
+                            onMouseLeave={() => {
+                              if (!isEditMode && hoveredNoteDate === key) {
+                                setHoveredNoteDate(null);
+                              }
                             }}
-                            title={titleText}
-                            type="button"
                           >
-                            {date.getDate()}
-                          </button>
+                            <button
+                              className={`day ${cfg ? "filled" : ""} ${
+                                isEditMode ? "editable" : "readonly"
+                              } ${changedLive ? "changed-live" : ""} ${
+                                isToday ? "today-day" : ""
+                              } ${hasNote ? "has-note" : ""}`}
+                              onMouseDown={() => {
+                                if (!isEditMode) return;
+
+                                const existingOwner = draftData[key];
+                                const mode: DragMode =
+                                  existingOwner === selected ? "unset" : "set";
+
+                                setIsDragging(true);
+                                setDragStartIndex(globalIndex);
+                                setDragCurrentIndex(globalIndex);
+                                setDragMode(mode);
+                                setBaseData(cloneData(draftData));
+                              }}
+                              onMouseEnter={() => {
+                                if (isEditMode && isDragging) {
+                                  setDragCurrentIndex(globalIndex);
+                                }
+                              }}
+                              onClick={() => {
+                                if (!isEditMode && hasNote) {
+                                  setOpenedNoteDate((prev) =>
+                                    prev === key ? null : key
+                                  );
+                                }
+                              }}
+                              style={{
+                                backgroundColor: cfg ? cfg.color : "#ffffff",
+                                color: cfg ? cfg.textColor : "#334155",
+                                borderColor: cfg ? cfg.color : "#e2e8f0",
+                                cursor: isEditMode
+                                  ? "pointer"
+                                  : hasNote
+                                  ? "pointer"
+                                  : "default",
+                              }}
+                              title={titleText}
+                              type="button"
+                            >
+                              {date.getDate()}
+                            </button>
+
+                            {showNote && (
+                              <div className="day-note-popover">
+                                <div className="day-note-label">Opmerking</div>
+                                <div className="day-note-text">{noteText}</div>
+                              </div>
+                            )}
+                          </div>
                         );
                       })}
                     </div>
@@ -1492,9 +1449,6 @@ async function confirmDeleteRequest() {
           </>
         )}
 
-        {/* ==========================================================
-            HOOFDSTUK: TAB GOEDKEURINGEN
-            ========================================================== */}
         {activeTab === "goedkeuringen" && (
           <section className="logs-card">
             <div className="logs-header">
@@ -1747,16 +1701,13 @@ async function confirmDeleteRequest() {
         )}
       </div>
 
-      {/* ==========================================================
-          HOOFDSTUK: MODAL - ALLES WISSEN
-          ========================================================== */}
       {showClearModal && (
         <div className="modal-backdrop">
           <div className="confirm-modal">
             <h3>Alles wissen?</h3>
             <p>
-              Ben je zeker dat je in dit concept alle ingevulde dagen wilt leegmaken?
-              Daarna moet je nog steeds zelf op
+              Ben je zeker dat je in dit concept alle ingevulde dagen wilt
+              leegmaken? Daarna moet je nog steeds zelf op
               <strong> wijzigingen ter goedkeuring versturen </strong>
               klikken om de aanvraag echt te verzenden.
             </p>
@@ -1782,69 +1733,66 @@ async function confirmDeleteRequest() {
         </div>
       )}
 
-            {/* ==========================================================
-    HOOFDSTUK: MODAL - VERZOEK VERWIJDEREN
-    ========================================================== */}
-{deleteRequestTarget && (
-  <div className="modal-backdrop">
-    <div className="confirm-modal confirm-modal-delete">
-      <div className="confirm-modal-icon danger">🗑</div>
+      {deleteRequestTarget && (
+        <div className="modal-backdrop">
+          <div className="confirm-modal confirm-modal-delete">
+            <div className="confirm-modal-icon danger">🗑</div>
 
-      <div className="confirm-modal-header">
-        <h3>Verzoek verwijderen?</h3>
-        <p>
-          Dit verzoek wordt definitief verwijderd. Beide betrokken partijen
-          krijgen hiervan een melding via e-mail.
-        </p>
-      </div>
+            <div className="confirm-modal-header">
+              <h3>Verzoek verwijderen?</h3>
+              <p>
+                Dit verzoek wordt definitief verwijderd. Beide betrokken partijen
+                krijgen hiervan een melding via e-mail.
+              </p>
+            </div>
 
-      <div className="delete-request-summary">
-        <div className="delete-request-row">
-          <span className="delete-request-label">Aangevraagd door</span>
-          <span className="delete-request-value">
-            {deleteRequestTarget.requested_by}
-          </span>
-        </div>
+            <div className="delete-request-summary">
+              <div className="delete-request-row">
+                <span className="delete-request-label">Aangevraagd door</span>
+                <span className="delete-request-value">
+                  {deleteRequestTarget.requested_by}
+                </span>
+              </div>
 
-        <div className="delete-request-row">
-          <span className="delete-request-label">Datums</span>
-          <span className="delete-request-value">
-            {deleteRequestTarget.changed_dates}
-          </span>
-        </div>
+              <div className="delete-request-row">
+                <span className="delete-request-label">Datums</span>
+                <span className="delete-request-value">
+                  {deleteRequestTarget.changed_dates}
+                </span>
+              </div>
 
-        {deleteRequestTarget.request_comment && (
-          <div className="delete-request-row">
-            <span className="delete-request-label">Opmerking</span>
-            <span className="delete-request-value">
-              {deleteRequestTarget.request_comment}
-            </span>
+              {deleteRequestTarget.request_comment && (
+                <div className="delete-request-row">
+                  <span className="delete-request-label">Opmerking</span>
+                  <span className="delete-request-value">
+                    {deleteRequestTarget.request_comment}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            <div className="confirm-actions">
+              <button
+                className="ghost-btn"
+                type="button"
+                onClick={closeDeleteRequestModal}
+                disabled={deletingRequest}
+              >
+                Annuleren
+              </button>
+
+              <button
+                className="danger-btn"
+                type="button"
+                onClick={() => void confirmDeleteRequest()}
+                disabled={deletingRequest}
+              >
+                {deletingRequest ? "Bezig..." : "Ja, verwijderen"}
+              </button>
+            </div>
           </div>
-        )}
-      </div>
-
-      <div className="confirm-actions">
-        <button
-          className="ghost-btn"
-          type="button"
-          onClick={closeDeleteRequestModal}
-          disabled={deletingRequest}
-        >
-          Annuleren
-        </button>
-
-        <button
-          className="danger-btn"
-          type="button"
-          onClick={() => void confirmDeleteRequest()}
-          disabled={deletingRequest}
-        >
-          {deletingRequest ? "Bezig..." : "Ja, verwijderen"}
-        </button>
-      </div>
-    </div>
-  </div>
+        </div>
       )}
-  </>
-);
+    </>
+  );
 }

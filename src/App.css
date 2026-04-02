@@ -1259,3 +1259,103 @@ textarea {
   align-items: center;
   margin-bottom: 6px;
 }
+.day-wrapper {
+  position: relative;
+}
+
+.day.today-day {
+  position: relative;
+  box-shadow:
+    0 0 0 3px #1e293b inset,
+    0 0 0 1px rgba(255, 255, 255, 0.18);
+  font-weight: 800;
+}
+
+.day.today-day::after {
+  content: "";
+  position: absolute;
+  top: 7px;
+  right: 7px;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: #1e293b;
+}
+
+.day.has-note {
+  box-shadow:
+    0 0 0 2px #f59e0b inset,
+    0 0 0 1px rgba(255, 255, 255, 0.18);
+}
+
+.day.has-note::before {
+  content: "";
+  position: absolute;
+  top: 7px;
+  left: 7px;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: #f59e0b;
+}
+
+.day-note-popover {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 10px);
+  transform: translateX(-50%);
+  min-width: 220px;
+  max-width: 260px;
+  z-index: 50;
+  background: #ffffff;
+  color: #1e293b;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 12px 14px;
+  box-shadow: 0 14px 34px rgba(15, 23, 42, 0.16);
+  text-align: left;
+}
+
+.day-note-popover::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 100%;
+  transform: translateX(-50%);
+  border-width: 8px;
+  border-style: solid;
+  border-color: #ffffff transparent transparent transparent;
+  filter: drop-shadow(0 1px 0 #e2e8f0);
+}
+
+.day-note-label {
+  font-size: 11px;
+  font-weight: 800;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 6px;
+}
+
+.day-note-text {
+  font-size: 14px;
+  line-height: 1.45;
+  color: #1e293b;
+  word-break: break-word;
+}
+
+@media (max-width: 760px) {
+  .day-note-popover {
+    left: 0;
+    right: auto;
+    transform: none;
+    min-width: 180px;
+    max-width: 220px;
+    bottom: calc(100% + 8px);
+  }
+
+  .day-note-popover::after {
+    left: 20px;
+    transform: none;
+  }
+}
