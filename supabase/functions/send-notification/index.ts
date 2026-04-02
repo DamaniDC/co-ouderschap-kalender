@@ -36,7 +36,7 @@ serve(async (req: Request) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        from: "Co-Ouderschap-Kalender <juztmuzik@gmail.com>",
+        from: "Co-Ouderschap Kalender <onboarding@resend.dev>",
         to,
         subject,
         html,
