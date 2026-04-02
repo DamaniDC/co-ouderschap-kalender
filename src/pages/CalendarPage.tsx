@@ -922,47 +922,55 @@ export default function CalendarPage({ currentUserEmail }: Props) {
   }
 
   // ------------------------------
-  // SUB: Verzoek verwijderen
-  // ------------------------------
+// SUB: Verzoek verwijderen
+// ------------------------------
 
-  async function confirmDeleteRequest() {
-    if (!deleteRequestTarget) return;
+async function confirmDeleteRequest() {
+  if (!deleteRequestTarget) return;
 
-    setDeletingRequest(true);
+  setDeletingRequest(true);
 
-    try {
-      const request = deleteRequestTarget;
+  try {
+    const request = deleteRequestTarget;
 
-      const { error } = await supabase
-        .from("change_requests")
-        .delete()
-        .eq("id", request.id);
+    const { error } = await supabase
+      .from("change_requests")
+      .delete()
+      .eq("id", request.id);
 
-      if (error) throw error;
+    if (error) throw error;
 
-      if (request.requested_by !== currentUserEmail) {
-        await sendDeletedNotification({
-          to: request.requested_by,
-          requestId: request.id,
-          requester: request.requested_by,
-          changedDates: request.changed_dates.split(", ").filter(Boolean),
-          comment: request.request_comment,
-          reviewedBy: currentUserEmail,
-          oldValue: request.old_value,
-          newValue: request.new_value,
-        });
-      }
+    const recipients = Array.from(
+      new Set(
+        [request.requested_by, currentUserEmail].filter(
+          (value): value is string => Boolean(value)
+        )
+      )
+    );
 
-      await loadRequests();
-      setDeleteRequestTarget(null);
-      showMessage("Verzoek verwijderd.");
-    } catch (error) {
-      console.error("Fout bij verwijderen verzoek:", error);
-      showMessage("Er liep iets mis bij het verwijderen.");
-    } finally {
-      setDeletingRequest(false);
+    for (const recipient of recipients) {
+      await sendDeletedNotification({
+        to: recipient,
+        requestId: request.id,
+        requester: request.requested_by,
+        changedDates: request.changed_dates.split(", ").filter(Boolean),
+        comment: request.request_comment,
+        reviewedBy: currentUserEmail,
+        oldValue: request.old_value,
+        newValue: request.new_value,
+      });
     }
+
+    await loadRequests();
+    setDeleteRequestTarget(null);
+    showMessage("Verzoek verwijderd.");
+  } catch (error) {
+    console.error("Fout bij verwijderen verzoek:", error);
+    showMessage("Er liep iets mis bij het verwijderen.");
+  } finally {
+    setDeletingRequest(false);
   }
+}
 
   // ==========================================================
   // HOOFDSTUK: WIJZIGEN MODUS
@@ -1769,68 +1777,69 @@ export default function CalendarPage({ currentUserEmail }: Props) {
         </div>
       )}
 
-      {/* ==========================================================
-          HOOFDSTUK: MODAL - VERZOEK VERWIJDEREN
-          ========================================================== */}
-      {deleteRequestTarget && (
-        <div className="modal-backdrop">
-          <div className="confirm-modal confirm-modal-delete">
-            <div className="confirm-modal-icon danger">🗑️</div>
+            {/* ==========================================================
+    HOOFDSTUK: MODAL - VERZOEK VERWIJDEREN
+    ========================================================== */}
+{deleteRequestTarget && (
+  <div className="modal-backdrop">
+    <div className="confirm-modal confirm-modal-delete">
+      <div className="confirm-modal-icon danger">🗑</div>
 
-            <h3>Verzoek verwijderen?</h3>
+      <div className="confirm-modal-header">
+        <h3>Verzoek verwijderen?</h3>
+        <p>
+          Dit verzoek wordt definitief verwijderd. Beide betrokken partijen
+          krijgen hiervan een melding via e-mail.
+        </p>
+      </div>
 
-            <p>
-              Ben je zeker dat je dit verzoek wilt verwijderen? Deze actie kan
-              niet ongedaan gemaakt worden.
-            </p>
-
-            <div className="delete-request-summary">
-              <div className="delete-request-row">
-                <span className="delete-request-label">Aangevraagd door</span>
-                <span className="delete-request-value">
-                  {deleteRequestTarget.requested_by}
-                </span>
-              </div>
-
-              <div className="delete-request-row">
-                <span className="delete-request-label">Datums</span>
-                <span className="delete-request-value">
-                  {deleteRequestTarget.changed_dates}
-                </span>
-              </div>
-
-              {deleteRequestTarget.request_comment && (
-                <div className="delete-request-row">
-                  <span className="delete-request-label">Opmerking</span>
-                  <span className="delete-request-value">
-                    {deleteRequestTarget.request_comment}
-                  </span>
-                </div>
-              )}
-            </div>
-
-            <div className="confirm-actions">
-              <button
-                className="ghost-btn"
-                type="button"
-                onClick={closeDeleteRequestModal}
-                disabled={deletingRequest}
-              >
-                Annuleren
-              </button>
-
-              <button
-                className="danger-btn"
-                type="button"
-                onClick={() => void confirmDeleteRequest()}
-                disabled={deletingRequest}
-              >
-                {deletingRequest ? "Bezig..." : "Ja, verwijderen"}
-              </button>
-            </div>
-          </div>
+      <div className="delete-request-summary">
+        <div className="delete-request-row">
+          <span className="delete-request-label">Aangevraagd door</span>
+          <span className="delete-request-value">
+            {deleteRequestTarget.requested_by}
+          </span>
         </div>
+
+        <div className="delete-request-row">
+          <span className="delete-request-label">Datums</span>
+          <span className="delete-request-value">
+            {deleteRequestTarget.changed_dates}
+          </span>
+        </div>
+
+        {deleteRequestTarget.request_comment && (
+          <div className="delete-request-row">
+            <span className="delete-request-label">Opmerking</span>
+            <span className="delete-request-value">
+              {deleteRequestTarget.request_comment}
+            </span>
+          </div>
+        )}
+      </div>
+
+      <div className="confirm-actions">
+        <button
+          className="ghost-btn"
+          type="button"
+          onClick={closeDeleteRequestModal}
+          disabled={deletingRequest}
+        >
+          Annuleren
+        </button>
+
+        <button
+          className="danger-btn"
+          type="button"
+          onClick={() => void confirmDeleteRequest()}
+          disabled={deletingRequest}
+        >
+          {deletingRequest ? "Bezig..." : "Ja, verwijderen"}
+        </button>
+      </div>
+    </div>
+  </div>
       )}
-    </>
-  );
+  </>
+);
 }
