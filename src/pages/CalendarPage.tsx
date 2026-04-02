@@ -1265,7 +1265,7 @@ async function confirmDeleteRequest() {
                     <>
                       <div className="section-title">Wijzigingen aanvragen</div>
                       <div className="section-subtitle">
-                        Start eerst expliciet de wijzigen modus om een aanvraag op te maken.
+                        Klik om wijzigingen aan de kalender in te dienen.
                       </div>
                     </>
                    )}
@@ -1276,7 +1276,7 @@ async function confirmDeleteRequest() {
                     className="primary-action-btn"
                     onClick={startEditMode}
                   >
-                    Wijzigen modus starten
+                    Wijzigingen aanvragen
                   </button>
                 </div>
               </section>
@@ -1284,9 +1284,9 @@ async function confirmDeleteRequest() {
               <section className="request-note-card">
                 <div className="edit-mode-bar">
                   <div>
-                    <div className="section-title">Wijzigen modus actief</div>
+                    <div className="section-title">Maak je wijzigingen</div>
                     <div className="section-subtitle">
-                      Maak je wijzigingen, voeg eventueel een opmerking toe en verstuur dan de aanvraag.
+                      Kies een type in de zwevende kader en maak je wijzigingen, voeg eventueel een opmerking toe en verstuur dan de aanvraag.
                     </div>
                   </div>
 
