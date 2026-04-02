@@ -6,6 +6,10 @@ import {
   sendRejectedNotification,
 } from "../services/notifications";
 
+// ==========================================================
+// HOOFDSTUK: TYPES
+// ==========================================================
+
 type DayType =
   | "stephan"
   | "wing"
@@ -16,22 +20,13 @@ type DayType =
   | "vakantieWing";
 
 type DragMode = "set" | "unset";
-type MainTab = "kalender" | "goedkeuringen" | "logboek";
+type MainTab = "kalender" | "goedkeuringen";
 
 type DayTypeConfig = {
   label: string;
   color: string;
   textColor: string;
   shortLabel: string;
-};
-
-type LogRow = {
-  id: string;
-  changed_dates: string;
-  old_value: string | null;
-  new_value: string | null;
-  changed_by: string | null;
-  created_at: string;
 };
 
 type ChangeRequestRow = {
@@ -48,9 +43,22 @@ type ChangeRequestRow = {
   request_comment: string | null;
 };
 
+type DayRow = {
+  date: string;
+  type: string;
+};
+
 type Props = {
   currentUserEmail: string;
 };
+
+// ==========================================================
+// HOOFDSTUK: CONFIG
+// ==========================================================
+
+// ------------------------------
+// SUB: Dagtypes
+// ------------------------------
 
 const DAY_TYPES: Record<DayType, DayTypeConfig> = {
   stephan: {
@@ -97,6 +105,10 @@ const DAY_TYPES: Record<DayType, DayTypeConfig> = {
   },
 };
 
+// ------------------------------
+// SUB: Zwevende toolbar types
+// ------------------------------
+
 const TOOLBAR_TYPES: DayType[] = [
   "stephan",
   "wing",
@@ -107,7 +119,19 @@ const TOOLBAR_TYPES: DayType[] = [
   "vakantieWing",
 ];
 
+// ------------------------------
+// SUB: Weekdag labels
+// ------------------------------
+
 const WEEKDAYS = ["M", "D", "W", "D", "V", "Z", "Z"];
+
+// ==========================================================
+// HOOFDSTUK: HELPERS
+// ==========================================================
+
+// ------------------------------
+// SUB: Datum helpers
+// ------------------------------
 
 function formatKey(date: Date) {
   return date.toISOString().slice(0, 10);
@@ -118,6 +142,20 @@ function getMonthName(year: number, month: number) {
     month: "long",
   });
 }
+
+function formatDateTime(value: string) {
+  return new Date(value).toLocaleString("nl-BE", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+// ------------------------------
+// SUB: Kalender opbouw
+// ------------------------------
 
 function buildMonths(year: number) {
   const months: { month: number; name: string; cells: (Date | null)[] }[] = [];
@@ -130,10 +168,14 @@ function buildMonths(year: number) {
     const offset = (first.getDay() + 6) % 7;
 
     for (let i = 0; i < offset; i++) cells.push(null);
+
     for (let day = 1; day <= last.getDate(); day++) {
       cells.push(new Date(year, month, day));
     }
-    while (cells.length % 7 !== 0) cells.push(null);
+
+    while (cells.length % 7 !== 0) {
+      cells.push(null);
+    }
 
     months.push({
       month,
@@ -145,8 +187,16 @@ function buildMonths(year: number) {
   return months;
 }
 
+// ------------------------------
+// SUB: Data helpers
+// ------------------------------
+
 function cloneData(data: Record<string, DayType>) {
   return { ...data };
+}
+
+function isValidDayType(value: unknown): value is DayType {
+  return typeof value === "string" && value in DAY_TYPES;
 }
 
 function isCountableOwner(type?: DayType) {
@@ -164,23 +214,9 @@ function ownerFromType(type?: DayType): "stephan" | "wing" | null {
   return null;
 }
 
-function isValidDayType(value: unknown): value is DayType {
-  return typeof value === "string" && value in DAY_TYPES;
-}
-
 function pct(part: number, total: number) {
   if (!total) return "0%";
   return `${((part / total) * 100).toFixed(1)}%`;
-}
-
-function formatDateTime(value: string) {
-  return new Date(value).toLocaleString("nl-BE", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
 }
 
 function getStatusLabel(status: string) {
@@ -188,6 +224,10 @@ function getStatusLabel(status: string) {
   if (status === "rejected") return "Afgekeurd";
   return "Openstaand";
 }
+
+// ------------------------------
+// SUB: Mini vergelijking in Goedkeuringen
+// ------------------------------
 
 function renderMiniDiffCalendar(
   oldValue: string | null,
@@ -266,6 +306,7 @@ function renderMiniDiffCalendar(
                   title={`${key}: ${oldCfg?.label || "Leeg"} → ${newCfg?.label || "Leeg"}`}
                 >
                   <div className="mini-day-top">{key.slice(8)}</div>
+
                   <div className="mini-day-content">
                     <div
                       className="mini-half"
@@ -276,6 +317,7 @@ function renderMiniDiffCalendar(
                       style={{ background: newCfg?.color || "#ffffff" }}
                     />
                   </div>
+
                   <div className="mini-day-legend">
                     <span>{oldCfg?.shortLabel || "—"}</span>
                     <span>→</span>
@@ -291,34 +333,55 @@ function renderMiniDiffCalendar(
   );
 }
 
+// ==========================================================
+// HOOFDSTUK: COMPONENT
+// ==========================================================
+
 export default function CalendarPage({ currentUserEmail }: Props) {
   const year = 2026;
+
   const months = useMemo(() => buildMonths(year), []);
   const allDays = useMemo(() => months.flatMap((m) => m.cells), [months]);
   const realDayCount = useMemo(() => allDays.filter(Boolean).length, [allDays]);
+
+  // ==========================================================
+  // HOOFDSTUK: STATE
+  // ==========================================================
+
+  // ------------------------------
+  // SUB: Kalender state
+  // ------------------------------
 
   const [selected, setSelected] = useState<DayType>("stephan");
   const [data, setData] = useState<Record<string, DayType>>({});
   const [draftData, setDraftData] = useState<Record<string, DayType>>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+
+  // ------------------------------
+  // SUB: UI state
+  // ------------------------------
+
   const [showClearModal, setShowClearModal] = useState(false);
   const [toolbarCollapsed, setToolbarCollapsed] = useState(false);
   const [activeTab, setActiveTab] = useState<MainTab>("kalender");
-
-  const [logs, setLogs] = useState<LogRow[]>([]);
-  const [logsLoading, setLogsLoading] = useState(false);
-
-  const [requests, setRequests] = useState<ChangeRequestRow[]>([]);
-  const [requestsLoading, setRequestsLoading] = useState(false);
-
-  const [requestComment, setRequestComment] = useState("");
   const [uiMessage, setUiMessage] = useState("");
   const [highlightedRequestId, setHighlightedRequestId] = useState<string | null>(null);
 
+  // ------------------------------
+  // SUB: Aanvragen state
+  // ------------------------------
+
+  const [requests, setRequests] = useState<ChangeRequestRow[]>([]);
+  const [requestsLoading, setRequestsLoading] = useState(false);
+  const [requestComment, setRequestComment] = useState("");
   const [reviewComments, setReviewComments] = useState<Record<string, string>>(
     {}
   );
+
+  // ------------------------------
+  // SUB: Wijzigen modus state
+  // ------------------------------
 
   const [isEditMode, setIsEditMode] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
@@ -326,6 +389,14 @@ export default function CalendarPage({ currentUserEmail }: Props) {
   const [dragCurrentIndex, setDragCurrentIndex] = useState<number | null>(null);
   const [dragMode, setDragMode] = useState<DragMode | null>(null);
   const [baseData, setBaseData] = useState<Record<string, DayType>>({});
+
+  // ==========================================================
+  // HOOFDSTUK: UI HELPERS
+  // ==========================================================
+
+  // ------------------------------
+  // SUB: Tijdelijke boodschap tonen
+  // ------------------------------
 
   function showMessage(message: string) {
     setUiMessage(message);
@@ -335,24 +406,13 @@ export default function CalendarPage({ currentUserEmail }: Props) {
     }, 3500);
   }
 
-  async function loadLogs() {
-    setLogsLoading(true);
+  // ==========================================================
+  // HOOFDSTUK: DATA LADEN
+  // ==========================================================
 
-    const { data: rows, error } = await supabase
-      .from("change_log")
-      .select("id, changed_dates, old_value, new_value, changed_by, created_at")
-      .order("created_at", { ascending: false })
-      .limit(200);
-
-    if (error) {
-      console.error("Fout bij laden logboek:", error);
-      setLogsLoading(false);
-      return;
-    }
-
-    setLogs((rows as LogRow[]) || []);
-    setLogsLoading(false);
-  }
+  // ------------------------------
+  // SUB: Aanvragen laden
+  // ------------------------------
 
   async function loadRequests() {
     setRequestsLoading(true);
@@ -375,6 +435,10 @@ export default function CalendarPage({ currentUserEmail }: Props) {
     setRequestsLoading(false);
   }
 
+  // ------------------------------
+  // SUB: Kalender laden
+  // ------------------------------
+
   async function loadCalendar() {
     setLoading(true);
 
@@ -389,7 +453,7 @@ export default function CalendarPage({ currentUserEmail }: Props) {
     }
 
     const mapped: Record<string, DayType> = {};
-    (rows || []).forEach((row) => {
+    (rows as DayRow[] | null)?.forEach((row) => {
       if (isValidDayType(row.type)) {
         mapped[row.date] = row.type;
       }
@@ -400,11 +464,22 @@ export default function CalendarPage({ currentUserEmail }: Props) {
     setLoading(false);
   }
 
+  // ==========================================================
+  // HOOFDSTUK: EFFECTS
+  // ==========================================================
+
+  // ------------------------------
+  // SUB: Eerste keer laden
+  // ------------------------------
+
   useEffect(() => {
     void loadCalendar();
-    void loadLogs();
     void loadRequests();
   }, []);
+
+  // ------------------------------
+  // SUB: Deep link naar specifiek verzoek
+  // ------------------------------
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -423,34 +498,9 @@ export default function CalendarPage({ currentUserEmail }: Props) {
     }
   }, [requests.length]);
 
-  const pendingForMe = useMemo(
-    () =>
-      requests.filter(
-        (r) => r.status === "pending" && r.requested_by !== currentUserEmail
-      ),
-    [requests, currentUserEmail]
-  );
-
-  const myPendingRequests = useMemo(
-    () =>
-      requests.filter(
-        (r) => r.status === "pending" && r.requested_by === currentUserEmail
-      ),
-    [requests, currentUserEmail]
-  );
-
-  const openRequestsCount = useMemo(
-    () => pendingForMe.length + myPendingRequests.length,
-    [pendingForMe.length, myPendingRequests.length]
-  );
-
-  const handledRequests = useMemo(
-    () =>
-      requests.filter(
-        (r) => r.status === "approved" || r.status === "rejected"
-      ),
-    [requests]
-  );
+  // ------------------------------
+  // SUB: Polling voor nieuwe verzoeken
+  // ------------------------------
 
   useEffect(() => {
     const interval = setInterval(async () => {
@@ -470,7 +520,48 @@ export default function CalendarPage({ currentUserEmail }: Props) {
     }, 10000);
 
     return () => clearInterval(interval);
-  }, [pendingForMe.length, currentUserEmail]);
+  }, [currentUserEmail, pendingForMe.length]);
+
+  // ==========================================================
+  // HOOFDSTUK: AFGELEIDE DATA
+  // ==========================================================
+
+  // ------------------------------
+  // SUB: Openstaande verzoeken
+  // ------------------------------
+
+  const pendingForMe = useMemo(
+    () =>
+      requests.filter(
+        (r) => r.status === "pending" && r.requested_by !== currentUserEmail
+      ),
+    [requests, currentUserEmail]
+  );
+
+  const myPendingRequests = useMemo(
+    () =>
+      requests.filter(
+        (r) => r.status === "pending" && r.requested_by === currentUserEmail
+      ),
+    [requests, currentUserEmail]
+  );
+
+  const handledRequests = useMemo(
+    () =>
+      requests.filter(
+        (r) => r.status === "approved" || r.status === "rejected"
+      ),
+    [requests]
+  );
+
+  const openRequestsCount = useMemo(
+    () => pendingForMe.length + myPendingRequests.length,
+    [pendingForMe.length, myPendingRequests.length]
+  );
+
+  // ------------------------------
+  // SUB: Dag index mapping
+  // ------------------------------
 
   const dayIndexByKey = useMemo(() => {
     const map: Record<string, number> = {};
@@ -479,6 +570,10 @@ export default function CalendarPage({ currentUserEmail }: Props) {
     });
     return map;
   }, [allDays]);
+
+  // ------------------------------
+  // SUB: Preview data tijdens slepen
+  // ------------------------------
 
   function buildPreviewData() {
     if (
@@ -513,12 +608,20 @@ export default function CalendarPage({ currentUserEmail }: Props) {
 
   const previewData = buildPreviewData();
 
+  // ------------------------------
+  // SUB: Gewijzigde conceptdata?
+  // ------------------------------
+
   const hasDraftChanges = useMemo(() => {
     const keys = Array.from(
       new Set([...Object.keys(data), ...Object.keys(draftData)])
     );
     return keys.some((key) => data[key] !== draftData[key]);
   }, [data, draftData]);
+
+  // ------------------------------
+  // SUB: Tellingen overzicht
+  // ------------------------------
 
   const resolvedTotals = useMemo(() => {
     let stephan = 0;
@@ -550,6 +653,7 @@ export default function CalendarPage({ currentUserEmail }: Props) {
           if (!nextKey) continue;
           const nextType = previewData[nextKey];
           if (!nextType) continue;
+
           if (isCountableOwner(nextType)) {
             owner = ownerFromType(nextType);
             break;
@@ -568,6 +672,7 @@ export default function CalendarPage({ currentUserEmail }: Props) {
           if (!prevKey) continue;
           const prevType = previewData[prevKey];
           if (!prevType) continue;
+
           if (isCountableOwner(prevType)) {
             owner = ownerFromType(prevType);
             break;
@@ -587,11 +692,19 @@ export default function CalendarPage({ currentUserEmail }: Props) {
       scoutskamp,
       openstaand,
     };
-  }, [previewData, allDays, realDayCount]);
+  }, [allDays, previewData, realDayCount]);
 
   const normalTotal = resolvedTotals.stephan + resolvedTotals.wing;
   const vacationTotal =
     resolvedTotals.vakantieStephan + resolvedTotals.vakantieWing;
+
+  // ==========================================================
+  // HOOFDSTUK: AANVRAGEN
+  // ==========================================================
+
+  // ------------------------------
+  // SUB: Nieuw wijzigingsverzoek maken
+  // ------------------------------
 
   async function createChangeRequest(
     previousData: Record<string, DayType>,
@@ -653,73 +766,63 @@ export default function CalendarPage({ currentUserEmail }: Props) {
     }
   }
 
-  async function applyApprovedRequest(request: ChangeRequestRow) {
-    const changes = (request.new_value || "")
-      .split(" | ")
-      .map((part) => part.trim())
-      .filter(Boolean);
-
-    const upserts: {
-      date: string;
-      type: string;
-      updated_by: string;
-      updated_at: string;
-    }[] = [];
-
-    const deletes: string[] = [];
-
-    changes.forEach((entry) => {
-      const firstColon = entry.indexOf(":");
-      if (firstColon === -1) return;
-
-      const date = entry.slice(0, firstColon).trim();
-      const value = entry.slice(firstColon + 1).trim();
-
-      if (!date) return;
-
-      if (value === "leeg") {
-        deletes.push(date);
-      } else {
-        upserts.push({
-          date,
-          type: value,
-          updated_by: request.requested_by,
-          updated_at: new Date().toISOString(),
-        });
-      }
-    });
-
-    if (upserts.length > 0) {
-      const { error } = await supabase
-        .from("calendar_entries")
-        .upsert(upserts, { onConflict: "date" });
-
-      if (error) throw error;
-    }
-
-    if (deletes.length > 0) {
-      const { error } = await supabase
-        .from("calendar_entries")
-        .delete()
-        .in("date", deletes);
-
-      if (error) throw error;
-    }
-
-    const { error: logError } = await supabase.from("change_log").insert({
-      changed_dates: request.changed_dates,
-      old_value: request.old_value,
-      new_value: request.new_value,
-      changed_by: request.requested_by,
-      created_at: new Date().toISOString(),
-    });
-
-    if (logError) throw logError;
-  }
+  // ------------------------------
+  // SUB: Verzoek goedkeuren
+  // ------------------------------
 
   async function approveRequest(request: ChangeRequestRow) {
     try {
-      await applyApprovedRequest(request);
+      const changes = (request.new_value || "")
+        .split(" | ")
+        .map((part) => part.trim())
+        .filter(Boolean);
+
+      const upserts: {
+        date: string;
+        type: string;
+        updated_by: string;
+        updated_at: string;
+      }[] = [];
+
+      const deletes: string[] = [];
+
+      changes.forEach((entry) => {
+        const firstColon = entry.indexOf(":");
+        if (firstColon === -1) return;
+
+        const date = entry.slice(0, firstColon).trim();
+        const value = entry.slice(firstColon + 1).trim();
+
+        if (!date) return;
+
+        if (value === "leeg") {
+          deletes.push(date);
+        } else {
+          upserts.push({
+            date,
+            type: value,
+            updated_by: request.requested_by,
+            updated_at: new Date().toISOString(),
+          });
+        }
+      });
+
+      if (upserts.length > 0) {
+        const { error } = await supabase
+          .from("calendar_entries")
+          .upsert(upserts, { onConflict: "date" });
+
+        if (error) throw error;
+      }
+
+      if (deletes.length > 0) {
+        const { error } = await supabase
+          .from("calendar_entries")
+          .delete()
+          .in("date", deletes);
+
+        if (error) throw error;
+      }
 
       const reviewComment = reviewComments[request.id]?.trim() || null;
 
@@ -738,7 +841,6 @@ export default function CalendarPage({ currentUserEmail }: Props) {
       setReviewComments((prev) => ({ ...prev, [request.id]: "" }));
       await loadCalendar();
       await loadRequests();
-      await loadLogs();
       showMessage("Voorstel goedgekeurd.");
 
       await sendApprovedNotification({
@@ -754,6 +856,10 @@ export default function CalendarPage({ currentUserEmail }: Props) {
       showMessage("Er liep iets mis bij het goedkeuren.");
     }
   }
+
+  // ------------------------------
+  // SUB: Verzoek afkeuren
+  // ------------------------------
 
   async function rejectRequest(request: ChangeRequestRow) {
     try {
@@ -789,6 +895,10 @@ export default function CalendarPage({ currentUserEmail }: Props) {
     }
   }
 
+  // ------------------------------
+  // SUB: Verzoek verwijderen
+  // ------------------------------
+
   async function deleteRequest(requestId: string) {
     const confirmed = window.confirm(
       "Ben je zeker dat je dit verzoek wilt verwijderen?"
@@ -812,6 +922,14 @@ export default function CalendarPage({ currentUserEmail }: Props) {
     }
   }
 
+  // ==========================================================
+  // HOOFDSTUK: WIJZIGEN MODUS
+  // ==========================================================
+
+  // ------------------------------
+  // SUB: Wijzigen modus starten
+  // ------------------------------
+
   function startEditMode() {
     setDraftData(cloneData(data));
     setRequestComment("");
@@ -820,6 +938,10 @@ export default function CalendarPage({ currentUserEmail }: Props) {
       "Wijzigen modus actief. Maak je wijzigingen en verstuur daarna de aanvraag."
     );
   }
+
+  // ------------------------------
+  // SUB: Wijzigen modus annuleren
+  // ------------------------------
 
   function cancelEditMode() {
     setIsDragging(false);
@@ -832,6 +954,10 @@ export default function CalendarPage({ currentUserEmail }: Props) {
     setIsEditMode(false);
     showMessage("Wijzigen modus geannuleerd.");
   }
+
+  // ------------------------------
+  // SUB: Drag wijziging toepassen
+  // ------------------------------
 
   function applyCurrentDragToDraft() {
     if (
@@ -857,9 +983,17 @@ export default function CalendarPage({ currentUserEmail }: Props) {
     }
   }
 
+  // ------------------------------
+  // SUB: Huidige aanvraag versturen
+  // ------------------------------
+
   async function submitCurrentRequest() {
     await createChangeRequest(data, draftData, requestComment);
   }
+
+  // ------------------------------
+  // SUB: Concept volledig leegmaken
+  // ------------------------------
 
   function clearAllConfirmed() {
     setDraftData({});
@@ -869,13 +1003,28 @@ export default function CalendarPage({ currentUserEmail }: Props) {
     );
   }
 
+  // ==========================================================
+  // HOOFDSTUK: AUTH
+  // ==========================================================
+
+  // ------------------------------
+  // SUB: Uitloggen
+  // ------------------------------
+
   async function handleLogout() {
     await supabase.auth.signOut();
   }
 
+  // ==========================================================
+  // HOOFDSTUK: RENDER
+  // ==========================================================
+
   return (
     <>
       <div className="app-shell" onMouseUp={handleMouseUpCalendar}>
+        {/* ==========================================================
+            HOOFDSTUK: BOVENBALK
+            ========================================================== */}
         <header className="topbar">
           <div>
             <h1>Co-ouderschap kalender {year}</h1>
@@ -893,9 +1042,11 @@ export default function CalendarPage({ currentUserEmail }: Props) {
                 {pendingForMe.length > 1 ? "en" : ""}
               </button>
             )}
+
             <button className="ghost-btn" type="button">
               {currentUserEmail}
             </button>
+
             <button className="ghost-btn" onClick={handleLogout} type="button">
               Uitloggen
             </button>
@@ -904,6 +1055,9 @@ export default function CalendarPage({ currentUserEmail }: Props) {
 
         {uiMessage && <div className="inline-message">{uiMessage}</div>}
 
+        {/* ==========================================================
+            HOOFDSTUK: TABS
+            ========================================================== */}
         <section className="page-tabs-card">
           <div className="page-tabs">
             <button
@@ -913,6 +1067,7 @@ export default function CalendarPage({ currentUserEmail }: Props) {
             >
               Kalender
             </button>
+
             <button
               type="button"
               className={`page-tab ${activeTab === "goedkeuringen" ? "active" : ""}`}
@@ -925,18 +1080,17 @@ export default function CalendarPage({ currentUserEmail }: Props) {
                 </span>
               )}
             </button>
-            <button
-              type="button"
-              className={`page-tab ${activeTab === "logboek" ? "active" : ""}`}
-              onClick={() => setActiveTab("logboek")}
-            >
-              Logboek
-            </button>
           </div>
         </section>
 
+        {/* ==========================================================
+            HOOFDSTUK: TAB KALENDER
+            ========================================================== */}
         {activeTab === "kalender" && (
           <>
+            {/* ------------------------------
+                SUB: Overzicht
+                ------------------------------ */}
             <section className="stats-card">
               <div className="stats-header">
                 <div>
@@ -946,6 +1100,7 @@ export default function CalendarPage({ currentUserEmail }: Props) {
                     Vakantiewissel telt automatisch bij de ouder links.
                   </div>
                 </div>
+
                 <div className="section-subtitle">
                   {loading
                     ? "Laden..."
@@ -1053,6 +1208,9 @@ export default function CalendarPage({ currentUserEmail }: Props) {
               </div>
             </section>
 
+            {/* ------------------------------
+                SUB: Wijzigen modus infoblok
+                ------------------------------ */}
             {!isEditMode ? (
               <section className="request-note-card">
                 <div className="edit-mode-bar">
@@ -1090,6 +1248,7 @@ export default function CalendarPage({ currentUserEmail }: Props) {
                     >
                       Annuleren
                     </button>
+
                     <button
                       type="button"
                       className="primary-action-btn"
@@ -1118,6 +1277,9 @@ export default function CalendarPage({ currentUserEmail }: Props) {
               </section>
             )}
 
+            {/* ------------------------------
+                SUB: Kalender
+                ------------------------------ */}
             <section className="calendar-section">
               <div className="calendar-grid">
                 {months.map((month) => (
@@ -1195,6 +1357,9 @@ export default function CalendarPage({ currentUserEmail }: Props) {
               </div>
             </section>
 
+            {/* ------------------------------
+                SUB: Zwevende dagtypes toolbar
+                ------------------------------ */}
             {isEditMode && (
               <div
                 className={`floating-toolbar-overlay ${
@@ -1284,6 +1449,9 @@ export default function CalendarPage({ currentUserEmail }: Props) {
           </>
         )}
 
+        {/* ==========================================================
+            HOOFDSTUK: TAB GOEDKEURINGEN
+            ========================================================== */}
         {activeTab === "goedkeuringen" && (
           <section className="logs-card">
             <div className="logs-header">
@@ -1293,6 +1461,7 @@ export default function CalendarPage({ currentUserEmail }: Props) {
                   Openstaande voorstellen die nog een beslissing nodig hebben.
                 </div>
               </div>
+
               <button
                 className="ghost-btn"
                 type="button"
@@ -1302,6 +1471,9 @@ export default function CalendarPage({ currentUserEmail }: Props) {
               </button>
             </div>
 
+            {/* ------------------------------
+                SUB: Te beoordelen
+                ------------------------------ */}
             <div className="approval-section">
               <h3 className="approval-heading">Te beoordelen</h3>
 
@@ -1365,6 +1537,7 @@ export default function CalendarPage({ currentUserEmail }: Props) {
                         >
                           Goedkeuren
                         </button>
+
                         <button
                           className="reject-btn"
                           type="button"
@@ -1372,6 +1545,7 @@ export default function CalendarPage({ currentUserEmail }: Props) {
                         >
                           Weigeren
                         </button>
+
                         <button
                           className="delete-btn"
                           type="button"
@@ -1386,6 +1560,9 @@ export default function CalendarPage({ currentUserEmail }: Props) {
               )}
             </div>
 
+            {/* ------------------------------
+                SUB: Mijn openstaande aanvragen
+                ------------------------------ */}
             <div className="approval-section">
               <h3 className="approval-heading">Mijn openstaande aanvragen</h3>
 
@@ -1428,6 +1605,7 @@ export default function CalendarPage({ currentUserEmail }: Props) {
 
                       <div className="request-row-actions">
                         <div className="pending-pill">Wacht op goedkeuring</div>
+
                         <button
                           className="delete-btn"
                           type="button"
@@ -1442,6 +1620,9 @@ export default function CalendarPage({ currentUserEmail }: Props) {
               )}
             </div>
 
+            {/* ------------------------------
+                SUB: Afgehandelde verzoeken
+                ------------------------------ */}
             <div className="approval-section">
               <h3 className="approval-heading">Afgehandelde verzoeken</h3>
 
@@ -1530,56 +1711,11 @@ export default function CalendarPage({ currentUserEmail }: Props) {
             </div>
           </section>
         )}
-
-        {activeTab === "logboek" && (
-          <section className="logs-card">
-            <div className="logs-header">
-              <div>
-                <div className="section-title">Logboek</div>
-                <div className="section-subtitle">
-                  Overzicht van alle goedgekeurde wijzigingen.
-                </div>
-              </div>
-              <button
-                className="ghost-btn"
-                type="button"
-                onClick={() => void loadLogs()}
-              >
-                Vernieuwen
-              </button>
-            </div>
-
-            {logsLoading ? (
-              <div className="logs-empty">Logboek laden...</div>
-            ) : logs.length === 0 ? (
-              <div className="logs-empty">Nog geen logregels gevonden.</div>
-            ) : (
-              <div className="logs-list">
-                {logs.map((log) => (
-                  <article key={log.id} className="log-entry">
-                    <div className="log-entry-top">
-                      <div className="log-user">
-                        {log.changed_by || "Onbekende gebruiker"}
-                      </div>
-                      <div className="log-time">
-                        {formatDateTime(log.created_at)}
-                      </div>
-                    </div>
-
-                    <div className="log-block">
-                      <div className="log-label">Datums</div>
-                      <div className="log-content">{log.changed_dates}</div>
-                    </div>
-
-                    {renderMiniDiffCalendar(log.old_value, log.new_value)}
-                  </article>
-                ))}
-              </div>
-            )}
-          </section>
-        )}
       </div>
 
+      {/* ==========================================================
+          HOOFDSTUK: MODAL
+          ========================================================== */}
       {showClearModal && (
         <div className="modal-backdrop">
           <div className="confirm-modal">
@@ -1599,6 +1735,7 @@ export default function CalendarPage({ currentUserEmail }: Props) {
               >
                 Annuleren
               </button>
+
               <button
                 className="danger-btn"
                 type="button"
