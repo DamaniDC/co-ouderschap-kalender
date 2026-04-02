@@ -7,7 +7,7 @@ import { supabase } from "../supabase";
 export const APP_URL = "https://co-ouderschap-kalender.vercel.app";
 
 export const STEPHAN_EMAIL = "stephanjacob84@icloud.com";
-export const WING_EMAIL = "juztmuzik@me.com";
+export const WING_EMAIL = "seongwingli@icloud.com";
 
 // ==========================================================
 // HOOFDSTUK: TYPES
