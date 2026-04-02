@@ -1103,8 +1103,6 @@ async function confirmDeleteRequest() {
           </div>
         </header>
 
-        {uiMessage && <div className="inline-message">{uiMessage}</div>}
-
         {/* ==========================================================
             HOOFDSTUK: TABS
             ========================================================== */}
@@ -1259,10 +1257,18 @@ async function confirmDeleteRequest() {
               <section className="request-note-card">
                 <div className="edit-mode-bar">
                   <div>
-                    <div className="section-title">Wijzigingen aanvragen</div>
-                    <div className="section-subtitle">
-                      Start eerst expliciet de wijzigen modus om een aanvraag op te maken.
-                    </div>
+                    {uiMessage ? (
+                      <div className="inline-success">
+                        {uiMessage}
+                      </div>
+                    ) : (
+                    <>
+                      <div className="section-title">Wijzigingen aanvragen</div>
+                      <div className="section-subtitle">
+                        Start eerst expliciet de wijzigen modus om een aanvraag op te maken.
+                      </div>
+                    </>
+                   )}
                   </div>
 
                   <button

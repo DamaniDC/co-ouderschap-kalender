@@ -1245,3 +1245,12 @@ textarea {
   line-height: 1.55;
   word-break: break-word;
 }
+.inline-success {
+  background: #ecfdf5;
+  color: #065f46;
+  padding: 14px 18px;
+  border-radius: 12px;
+  font-weight: 500;
+  border: 1px solid #a7f3d0;
+  margin-bottom: 10px;
+}
