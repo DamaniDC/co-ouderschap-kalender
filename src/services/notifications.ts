@@ -13,7 +13,7 @@ export const WING_EMAIL = "juztmuzik@me.com";
 // HOOFDSTUK: TYPES
 // ==========================================================
 
-type MailType = "new" | "approved" | "rejected";
+type MailType = "new" | "approved" | "rejected" | "deleted";
 
 type BuildEmailParams = {
   type: MailType;
@@ -115,7 +115,8 @@ export function buildRequestLink(requestId: string) {
 export function buildEmailSubject(type: MailType) {
   if (type === "new") return "Nieuw wijzigingsverzoek";
   if (type === "approved") return "Je verzoek werd goedgekeurd";
-  return "Je verzoek werd afgekeurd";
+  if (type === "rejected") return "Je verzoek werd afgekeurd";
+  return "Een verzoek werd verwijderd";
 }
 
 // ------------------------------
@@ -365,12 +366,22 @@ function getEmailTexts(type: MailType) {
     };
   }
 
+  if (type === "rejected") {
+    return {
+      title: "Je verzoek werd afgekeurd",
+      intro: "Je wijzigingsverzoek werd afgekeurd.",
+      accent: "#b42318",
+      badgeBg: "#fef3f2",
+      badgeText: "#b42318",
+    };
+  }
+
   return {
-    title: "Je verzoek werd afgekeurd",
-    intro: "Je wijzigingsverzoek werd afgekeurd.",
-    accent: "#b42318",
-    badgeBg: "#fef3f2",
-    badgeText: "#b42318",
+    title: "Een verzoek werd verwijderd",
+    intro: "Een wijzigingsverzoek werd verwijderd.",
+    accent: "#9a6700",
+    badgeBg: "#fff7e8",
+    badgeText: "#9a6700",
   };
 }
 
@@ -688,6 +699,36 @@ export async function sendRejectedNotification(params: {
     subject: buildEmailSubject("rejected"),
     html: buildEmailHtml({
       type: "rejected",
+      requestId: params.requestId,
+      requester: params.requester,
+      dates: params.changedDates,
+      comment: params.comment,
+      reviewedBy: params.reviewedBy,
+      oldValue: params.oldValue,
+      newValue: params.newValue,
+    }),
+  });
+}
+
+// ------------------------------
+// SUB: Verwijdering mail versturen
+// ------------------------------
+
+export async function sendDeletedNotification(params: {
+  to: string;
+  requestId: string;
+  requester: string;
+  changedDates: string[];
+  comment?: string | null;
+  reviewedBy?: string | null;
+  oldValue?: string | null;
+  newValue?: string | null;
+}) {
+  await sendMailNotification({
+    to: params.to,
+    subject: buildEmailSubject("deleted"),
+    html: buildEmailHtml({
+      type: "deleted",
       requestId: params.requestId,
       requester: params.requester,
       dates: params.changedDates,

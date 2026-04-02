@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "../supabase";
 import {
   sendApprovedNotification,
+  sendDeletedNotification,
   sendNewRequestNotification,
   sendRejectedNotification,
 } from "../services/notifications";
@@ -367,6 +368,9 @@ export default function CalendarPage({ currentUserEmail }: Props) {
   const [activeTab, setActiveTab] = useState<MainTab>("kalender");
   const [uiMessage, setUiMessage] = useState("");
   const [highlightedRequestId, setHighlightedRequestId] = useState<string | null>(null);
+  const [deleteRequestTarget, setDeleteRequestTarget] =
+    useState<ChangeRequestRow | null>(null);
+  const [deletingRequest, setDeletingRequest] = useState(false);
 
   // ------------------------------
   // SUB: Aanvragen state
@@ -503,23 +507,23 @@ export default function CalendarPage({ currentUserEmail }: Props) {
   // ------------------------------
 
   useEffect(() => {
-  const interval = setInterval(async () => {
-    const { data: rows, error } = await supabase
-      .from("change_requests")
-      .select("id, requested_by, status")
-      .eq("status", "pending");
+    const interval = setInterval(async () => {
+      const { data: rows, error } = await supabase
+        .from("change_requests")
+        .select("id, requested_by, status")
+        .eq("status", "pending");
 
-    if (error || !rows) return;
+      if (error || !rows) return;
 
-    const newForMe = rows.filter((r) => r.requested_by !== currentUserEmail);
+      const newForMe = rows.filter((r) => r.requested_by !== currentUserEmail);
 
-    if (newForMe.length > 0) {
-      await loadRequests();
-    }
-  }, 10000);
+      if (newForMe.length > 0) {
+        await loadRequests();
+      }
+    }, 10000);
 
-  return () => clearInterval(interval);
-}, [currentUserEmail]);
+    return () => clearInterval(interval);
+  }, [currentUserEmail]);
 
   // ==========================================================
   // HOOFDSTUK: AFGELEIDE DATA
@@ -901,29 +905,62 @@ export default function CalendarPage({ currentUserEmail }: Props) {
   }
 
   // ------------------------------
+  // SUB: Verwijder popup openen
+  // ------------------------------
+
+  function openDeleteRequestModal(request: ChangeRequestRow) {
+    setDeleteRequestTarget(request);
+  }
+
+  // ------------------------------
+  // SUB: Verwijder popup sluiten
+  // ------------------------------
+
+  function closeDeleteRequestModal() {
+    if (deletingRequest) return;
+    setDeleteRequestTarget(null);
+  }
+
+  // ------------------------------
   // SUB: Verzoek verwijderen
   // ------------------------------
 
-  async function deleteRequest(requestId: string) {
-    const confirmed = window.confirm(
-      "Ben je zeker dat je dit verzoek wilt verwijderen?"
-    );
+  async function confirmDeleteRequest() {
+    if (!deleteRequestTarget) return;
 
-    if (!confirmed) return;
+    setDeletingRequest(true);
 
     try {
+      const request = deleteRequestTarget;
+
       const { error } = await supabase
         .from("change_requests")
         .delete()
-        .eq("id", requestId);
+        .eq("id", request.id);
 
       if (error) throw error;
 
+      if (request.requested_by !== currentUserEmail) {
+        await sendDeletedNotification({
+          to: request.requested_by,
+          requestId: request.id,
+          requester: request.requested_by,
+          changedDates: request.changed_dates.split(", ").filter(Boolean),
+          comment: request.request_comment,
+          reviewedBy: currentUserEmail,
+          oldValue: request.old_value,
+          newValue: request.new_value,
+        });
+      }
+
       await loadRequests();
+      setDeleteRequestTarget(null);
       showMessage("Verzoek verwijderd.");
     } catch (error) {
       console.error("Fout bij verwijderen verzoek:", error);
       showMessage("Er liep iets mis bij het verwijderen.");
+    } finally {
+      setDeletingRequest(false);
     }
   }
 
@@ -1093,9 +1130,6 @@ export default function CalendarPage({ currentUserEmail }: Props) {
             ========================================================== */}
         {activeTab === "kalender" && (
           <>
-            {/* ------------------------------
-                SUB: Overzicht
-                ------------------------------ */}
             <section className="stats-card">
               <div className="stats-header">
                 <div>
@@ -1213,9 +1247,6 @@ export default function CalendarPage({ currentUserEmail }: Props) {
               </div>
             </section>
 
-            {/* ------------------------------
-                SUB: Wijzigen modus infoblok
-                ------------------------------ */}
             {!isEditMode ? (
               <section className="request-note-card">
                 <div className="edit-mode-bar">
@@ -1282,9 +1313,6 @@ export default function CalendarPage({ currentUserEmail }: Props) {
               </section>
             )}
 
-            {/* ------------------------------
-                SUB: Kalender
-                ------------------------------ */}
             <section className="calendar-section">
               <div className="calendar-grid">
                 {months.map((month) => (
@@ -1362,9 +1390,6 @@ export default function CalendarPage({ currentUserEmail }: Props) {
               </div>
             </section>
 
-            {/* ------------------------------
-                SUB: Zwevende dagtypes toolbar
-                ------------------------------ */}
             {isEditMode && (
               <div
                 className={`floating-toolbar-overlay ${
@@ -1476,9 +1501,6 @@ export default function CalendarPage({ currentUserEmail }: Props) {
               </button>
             </div>
 
-            {/* ------------------------------
-                SUB: Te beoordelen
-                ------------------------------ */}
             <div className="approval-section">
               <h3 className="approval-heading">Te beoordelen</h3>
 
@@ -1554,7 +1576,7 @@ export default function CalendarPage({ currentUserEmail }: Props) {
                         <button
                           className="delete-btn"
                           type="button"
-                          onClick={() => void deleteRequest(request.id)}
+                          onClick={() => openDeleteRequestModal(request)}
                         >
                           Verwijderen
                         </button>
@@ -1565,9 +1587,6 @@ export default function CalendarPage({ currentUserEmail }: Props) {
               )}
             </div>
 
-            {/* ------------------------------
-                SUB: Mijn openstaande aanvragen
-                ------------------------------ */}
             <div className="approval-section">
               <h3 className="approval-heading">Mijn openstaande aanvragen</h3>
 
@@ -1614,7 +1633,7 @@ export default function CalendarPage({ currentUserEmail }: Props) {
                         <button
                           className="delete-btn"
                           type="button"
-                          onClick={() => void deleteRequest(request.id)}
+                          onClick={() => openDeleteRequestModal(request)}
                         >
                           Verwijderen
                         </button>
@@ -1625,9 +1644,6 @@ export default function CalendarPage({ currentUserEmail }: Props) {
               )}
             </div>
 
-            {/* ------------------------------
-                SUB: Afgehandelde verzoeken
-                ------------------------------ */}
             <div className="approval-section">
               <h3 className="approval-heading">Afgehandelde verzoeken</h3>
 
@@ -1704,7 +1720,7 @@ export default function CalendarPage({ currentUserEmail }: Props) {
                         <button
                           className="delete-btn"
                           type="button"
-                          onClick={() => void deleteRequest(request.id)}
+                          onClick={() => openDeleteRequestModal(request)}
                         >
                           Verwijderen
                         </button>
@@ -1719,7 +1735,7 @@ export default function CalendarPage({ currentUserEmail }: Props) {
       </div>
 
       {/* ==========================================================
-          HOOFDSTUK: MODAL
+          HOOFDSTUK: MODAL - ALLES WISSEN
           ========================================================== */}
       {showClearModal && (
         <div className="modal-backdrop">
@@ -1747,6 +1763,69 @@ export default function CalendarPage({ currentUserEmail }: Props) {
                 onClick={clearAllConfirmed}
               >
                 Ja, concept leegmaken
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ==========================================================
+          HOOFDSTUK: MODAL - VERZOEK VERWIJDEREN
+          ========================================================== */}
+      {deleteRequestTarget && (
+        <div className="modal-backdrop">
+          <div className="confirm-modal confirm-modal-delete">
+            <div className="confirm-modal-icon danger">🗑️</div>
+
+            <h3>Verzoek verwijderen?</h3>
+
+            <p>
+              Ben je zeker dat je dit verzoek wilt verwijderen? Deze actie kan
+              niet ongedaan gemaakt worden.
+            </p>
+
+            <div className="delete-request-summary">
+              <div className="delete-request-row">
+                <span className="delete-request-label">Aangevraagd door</span>
+                <span className="delete-request-value">
+                  {deleteRequestTarget.requested_by}
+                </span>
+              </div>
+
+              <div className="delete-request-row">
+                <span className="delete-request-label">Datums</span>
+                <span className="delete-request-value">
+                  {deleteRequestTarget.changed_dates}
+                </span>
+              </div>
+
+              {deleteRequestTarget.request_comment && (
+                <div className="delete-request-row">
+                  <span className="delete-request-label">Opmerking</span>
+                  <span className="delete-request-value">
+                    {deleteRequestTarget.request_comment}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            <div className="confirm-actions">
+              <button
+                className="ghost-btn"
+                type="button"
+                onClick={closeDeleteRequestModal}
+                disabled={deletingRequest}
+              >
+                Annuleren
+              </button>
+
+              <button
+                className="danger-btn"
+                type="button"
+                onClick={() => void confirmDeleteRequest()}
+                disabled={deletingRequest}
+              >
+                {deletingRequest ? "Bezig..." : "Ja, verwijderen"}
               </button>
             </div>
           </div>
