@@ -1,3 +1,7 @@
+/* ==========================================================
+   HOOFDSTUK: BASIS
+   ========================================================== */
+
 * {
   box-sizing: border-box;
 }
@@ -11,6 +15,7 @@
   --text: #1e293b;
   --muted: #64748b;
   --shadow: 0 10px 30px rgba(15, 23, 42, 0.06);
+  --shadow-strong: 0 18px 45px rgba(15, 23, 42, 0.12);
   --radius-xl: 24px;
   --radius-lg: 18px;
   --radius-md: 14px;
@@ -32,6 +37,10 @@ input,
 textarea {
   font: inherit;
 }
+
+/* ==========================================================
+   HOOFDSTUK: APP LAYOUT
+   ========================================================== */
 
 .app-shell {
   max-width: 1680px;
@@ -66,14 +75,19 @@ textarea {
   flex-wrap: wrap;
 }
 
+/* ==========================================================
+   HOOFDSTUK: ALGEMENE KNOPPEN
+   ========================================================== */
+
 .ghost-btn {
   border: 1px solid var(--line);
-  background: #fff;
+  background: #ffffff;
   color: var(--text);
   border-radius: 12px;
   padding: 10px 14px;
   cursor: pointer;
   transition: 0.15s ease;
+  font-weight: 600;
 }
 
 .ghost-btn:hover {
@@ -90,6 +104,124 @@ textarea {
   background: #eef4ff;
   color: #16325c;
 }
+
+.primary-action-btn {
+  border: 1px solid #1e293b;
+  background: #1e293b;
+  color: #ffffff;
+  border-radius: 12px;
+  padding: 10px 14px;
+  cursor: pointer;
+  font-weight: 700;
+  transition: 0.15s ease;
+}
+
+.primary-action-btn:hover {
+  background: #162133;
+  border-color: #162133;
+}
+
+.primary-action-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.primary-btn {
+  width: 100%;
+  border: 1px solid #1e293b;
+  background: #1e293b;
+  color: #ffffff;
+  border-radius: 12px;
+  padding: 14px 16px;
+  cursor: pointer;
+  font-weight: 700;
+  transition: 0.15s ease;
+}
+
+.primary-btn:hover {
+  background: #162133;
+  border-color: #162133;
+}
+
+.primary-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.approve-btn {
+  border: 1px solid #067647;
+  background: #067647;
+  color: #ffffff;
+  border-radius: 12px;
+  padding: 10px 14px;
+  cursor: pointer;
+  font-weight: 700;
+  transition: 0.15s ease;
+}
+
+.approve-btn:hover {
+  background: #085d3a;
+  border-color: #085d3a;
+}
+
+.reject-btn {
+  border: 1px solid #b42318;
+  background: #fff5f5;
+  color: #b42318;
+  border-radius: 12px;
+  padding: 10px 14px;
+  cursor: pointer;
+  font-weight: 700;
+  transition: 0.15s ease;
+}
+
+.reject-btn:hover {
+  background: #fee4e2;
+}
+
+.delete-btn {
+  border: 1px solid #d0d5dd;
+  background: #ffffff;
+  color: #344054;
+  border-radius: 12px;
+  padding: 10px 14px;
+  cursor: pointer;
+  font-weight: 700;
+  transition: 0.15s ease;
+}
+
+.delete-btn:hover {
+  background: #f8fafc;
+}
+
+.danger-btn {
+  border: 1px solid #b42318;
+  background: #b42318;
+  color: #ffffff;
+  border-radius: 12px;
+  padding: 10px 14px;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.danger-btn:hover {
+  background: #991b1b;
+  border-color: #991b1b;
+}
+
+.danger-link-btn {
+  border: 1px solid #f3d0d0;
+  background: #fff5f5;
+  color: #b42318;
+  border-radius: 12px;
+  padding: 10px 12px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+/* ==========================================================
+   HOOFDSTUK: CARDS / BLOKKEN
+   ========================================================== */
 
 .stats-card,
 .page-tabs-card,
@@ -133,6 +265,10 @@ textarea {
   font-weight: 600;
 }
 
+/* ==========================================================
+   HOOFDSTUK: TABS
+   ========================================================== */
+
 .page-tabs {
   display: flex;
   gap: 10px;
@@ -141,7 +277,7 @@ textarea {
 
 .page-tab {
   border: 1px solid var(--line);
-  background: #fff;
+  background: #ffffff;
   color: var(--text);
   border-radius: 12px;
   padding: 10px 14px;
@@ -168,7 +304,7 @@ textarea {
   padding: 0 6px;
   border-radius: 999px;
   background: #5b8def;
-  color: #fff;
+  color: #ffffff;
   font-size: 11px;
   font-weight: 700;
 }
@@ -176,6 +312,10 @@ textarea {
 .tab-badge-danger {
   background: #dc2626;
 }
+
+/* ==========================================================
+   HOOFDSTUK: OVERZICHT
+   ========================================================== */
 
 .stats-grid {
   display: grid;
@@ -248,6 +388,10 @@ textarea {
   line-height: 1;
 }
 
+/* ==========================================================
+   HOOFDSTUK: WIJZIGEN MODUS
+   ========================================================== */
+
 .edit-mode-bar {
   display: flex;
   align-items: center;
@@ -262,26 +406,6 @@ textarea {
   flex-wrap: wrap;
 }
 
-.primary-action-btn {
-  border: 1px solid #1e293b;
-  background: #1e293b;
-  color: #fff;
-  border-radius: 12px;
-  padding: 10px 14px;
-  cursor: pointer;
-  font-weight: 700;
-}
-
-.primary-action-btn:hover {
-  background: #162133;
-  border-color: #162133;
-}
-
-.primary-action-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
 .request-note-textarea {
   margin-top: 10px;
   width: 100%;
@@ -291,12 +415,16 @@ textarea {
   border-radius: 14px;
   padding: 12px 14px;
   color: var(--text);
-  background: #fff;
+  background: #ffffff;
 }
 
 .request-note-textarea.small {
   min-height: 78px;
 }
+
+/* ==========================================================
+   HOOFDSTUK: KALENDER
+   ========================================================== */
 
 .calendar-section {
   margin-top: 2px;
@@ -349,7 +477,7 @@ textarea {
   aspect-ratio: 1 / 1;
   border: 1px solid var(--line);
   border-radius: 12px;
-  background: #fff;
+  background: #ffffff;
   color: #334155;
   user-select: none;
   font-weight: 700;
@@ -394,6 +522,10 @@ textarea {
   }
 }
 
+/* ==========================================================
+   HOOFDSTUK: TOOLBAR
+   ========================================================== */
+
 .tool-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(150px, 1fr));
@@ -410,7 +542,7 @@ textarea {
   min-height: 58px;
   border: 2px solid var(--line);
   border-radius: 14px;
-  background: #fff;
+  background: #ffffff;
   cursor: pointer;
   padding: 8px 10px;
   display: flex;
@@ -516,23 +648,13 @@ textarea {
 
 .collapse-btn {
   border: 1px solid var(--line);
-  background: #fff;
+  background: #ffffff;
   color: var(--text);
   border-radius: 12px;
   width: 40px;
   height: 40px;
   cursor: pointer;
   font-weight: 700;
-}
-
-.danger-link-btn {
-  border: 1px solid #f3d0d0;
-  background: #fff5f5;
-  color: #b42318;
-  border-radius: 12px;
-  padding: 10px 12px;
-  cursor: pointer;
-  font-weight: 600;
 }
 
 .floating-toolbar-overlay.collapsed {
@@ -555,6 +677,10 @@ textarea {
   margin-bottom: 0;
 }
 
+/* ==========================================================
+   HOOFDSTUK: GOEDKEURINGEN UI UPGRADE
+   ========================================================== */
+
 .logs-empty {
   padding: 24px;
   text-align: center;
@@ -566,14 +692,25 @@ textarea {
 
 .logs-list {
   display: grid;
-  gap: 12px;
+  gap: 16px;
 }
 
 .log-entry {
-  background: #ffffff;
+  background: linear-gradient(180deg, #ffffff 0%, #fbfcfe 100%);
   border: 1px solid var(--line-soft);
-  border-radius: 18px;
-  padding: 14px;
+  border-radius: 20px;
+  padding: 16px;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.15s ease;
+  box-shadow: 0 6px 20px rgba(15, 23, 42, 0.04);
+}
+
+.log-entry:hover {
+  border-color: #c7d6ea;
+  box-shadow: 0 14px 32px rgba(15, 23, 42, 0.08);
+  transform: translateY(-1px);
 }
 
 .log-entry-top {
@@ -581,13 +718,14 @@ textarea {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  margin-bottom: 12px;
+  margin-bottom: 14px;
   flex-wrap: wrap;
 }
 
 .log-user {
-  font-weight: 700;
+  font-weight: 800;
   color: #1e293b;
+  font-size: 15px;
 }
 
 .log-time {
@@ -601,78 +739,36 @@ textarea {
 }
 
 .log-label {
-  font-size: 12px;
-  font-weight: 700;
+  font-size: 11px;
+  font-weight: 800;
   color: var(--muted);
   text-transform: uppercase;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.05em;
 }
 
 .log-content {
   font-size: 14px;
   color: #1e293b;
-  line-height: 1.45;
+  line-height: 1.5;
   word-break: break-word;
 }
 
 .approval-section + .approval-section {
-  margin-top: 24px;
+  margin-top: 28px;
 }
 
 .approval-heading {
   margin: 0 0 12px;
-  font-size: 18px;
+  font-size: 19px;
   color: #1e293b;
+  letter-spacing: -0.01em;
 }
 
 .approve-actions {
   display: flex;
   gap: 10px;
-  margin-top: 14px;
+  margin-top: 16px;
   flex-wrap: wrap;
-}
-
-.approve-btn {
-  border: 1px solid #067647;
-  background: #067647;
-  color: #fff;
-  border-radius: 12px;
-  padding: 10px 14px;
-  cursor: pointer;
-  font-weight: 700;
-}
-
-.approve-btn:hover {
-  background: #085d3a;
-  border-color: #085d3a;
-}
-
-.reject-btn {
-  border: 1px solid #b42318;
-  background: #fff5f5;
-  color: #b42318;
-  border-radius: 12px;
-  padding: 10px 14px;
-  cursor: pointer;
-  font-weight: 700;
-}
-
-.reject-btn:hover {
-  background: #fee4e2;
-}
-
-.delete-btn {
-  border: 1px solid #d0d5dd;
-  background: #ffffff;
-  color: #344054;
-  border-radius: 12px;
-  padding: 10px 14px;
-  cursor: pointer;
-  font-weight: 700;
-}
-
-.delete-btn:hover {
-  background: #f8fafc;
 }
 
 .pending-pill {
@@ -688,7 +784,7 @@ textarea {
 }
 
 .request-row-actions {
-  margin-top: 14px;
+  margin-top: 16px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -711,7 +807,7 @@ textarea {
   padding: 8px 12px;
   border-radius: 999px;
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 800;
 }
 
 .status-approved {
@@ -731,24 +827,29 @@ textarea {
   color: var(--muted);
 }
 
+/* ==========================================================
+   HOOFDSTUK: MINI VERGELIJKINGSKALENDER
+   ========================================================== */
+
 .mini-week-wrapper {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  margin-top: 12px;
+  margin-top: 14px;
 }
 
 .mini-week {
   background: #f8fafc;
-  padding: 10px;
-  border-radius: 10px;
+  padding: 12px;
+  border-radius: 14px;
+  border: 1px solid #edf2f7;
 }
 
 .mini-week-label {
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 800;
   color: #64748b;
-  margin-bottom: 6px;
+  margin-bottom: 8px;
 }
 
 .mini-week-grid {
@@ -765,31 +866,33 @@ textarea {
   font-size: 10px;
   text-align: center;
   color: #64748b;
-  font-weight: 700;
+  font-weight: 800;
 }
 
 .mini-week-day {
-  border-radius: 6px;
+  border-radius: 8px;
   overflow: hidden;
   border: 1px solid #e2e8f0;
-  background: #fff;
+  background: #ffffff;
 }
 
 .mini-week-day.changed {
   border: 2px solid #f87171;
+  box-shadow: 0 0 0 2px rgba(248, 113, 113, 0.08);
 }
 
 .mini-day-top {
   font-size: 9px;
   text-align: center;
-  padding: 2px;
+  padding: 3px;
   color: #475569;
-  background: #fff;
+  background: #ffffff;
+  font-weight: 700;
 }
 
 .mini-day-content {
   display: flex;
-  height: 16px;
+  height: 18px;
 }
 
 .mini-half {
@@ -800,26 +903,40 @@ textarea {
   display: flex;
   justify-content: space-between;
   gap: 4px;
-  padding: 2px 4px 4px;
+  padding: 3px 4px 5px;
   font-size: 9px;
   color: #475569;
-  background: #fff;
+  background: #ffffff;
 }
+
+/* ==========================================================
+   HOOFDSTUK: HIGHLIGHT REQUEST
+   ========================================================== */
 
 .highlighted-request {
   border: 2px solid #5b8def;
-  box-shadow: 0 0 0 4px rgba(91, 141, 239, 0.12);
+  box-shadow:
+    0 0 0 4px rgba(91, 141, 239, 0.12),
+    0 16px 36px rgba(91, 141, 239, 0.12);
   animation: requestGlow 2s ease;
 }
 
 @keyframes requestGlow {
   0% {
-    box-shadow: 0 0 0 0 rgba(91, 141, 239, 0.35);
+    box-shadow:
+      0 0 0 0 rgba(91, 141, 239, 0.35),
+      0 10px 24px rgba(91, 141, 239, 0.06);
   }
   100% {
-    box-shadow: 0 0 0 4px rgba(91, 141, 239, 0.12);
+    box-shadow:
+      0 0 0 4px rgba(91, 141, 239, 0.12),
+      0 16px 36px rgba(91, 141, 239, 0.12);
   }
 }
+
+/* ==========================================================
+   HOOFDSTUK: MODAL
+   ========================================================== */
 
 .modal-backdrop {
   position: fixed;
@@ -861,20 +978,92 @@ textarea {
   flex-wrap: wrap;
 }
 
-.danger-btn {
-  border: 1px solid #b42318;
-  background: #b42318;
-  color: #fff;
-  border-radius: 12px;
-  padding: 10px 14px;
-  cursor: pointer;
-  font-weight: 700;
+/* ==========================================================
+   HOOFDSTUK: LOGIN PAGE
+   ========================================================== */
+
+.login-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #1e293b, #334155);
+  padding: 20px;
 }
 
-.danger-btn:hover {
-  background: #991b1b;
-  border-color: #991b1b;
+.login-card {
+  width: 100%;
+  max-width: 420px;
+  background: #ffffff;
+  border-radius: 24px;
+  padding: 32px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.2);
 }
+
+.auth-header {
+  margin-bottom: 20px;
+}
+
+.auth-title {
+  margin: 0 0 8px;
+  font-size: 32px;
+  line-height: 1.1;
+  color: #1e293b;
+}
+
+.auth-subtitle {
+  margin: 0;
+  color: #64748b;
+  font-size: 14px;
+}
+
+.auth-mode-switch {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 18px;
+  flex-wrap: wrap;
+}
+
+.mode-active {
+  border-color: #5b8def;
+  background: #e8eefc;
+  color: #16325c;
+}
+
+.auth-form {
+  display: grid;
+  gap: 12px;
+}
+
+.auth-input {
+  width: 100%;
+  border: 1px solid #dbe2ea;
+  border-radius: 12px;
+  padding: 14px 16px;
+  font-size: 15px;
+  background: #ffffff;
+  color: #1e293b;
+}
+
+.auth-input:focus {
+  outline: none;
+  border-color: #5b8def;
+  box-shadow: 0 0 0 3px rgba(91, 141, 239, 0.15);
+}
+
+.auth-message {
+  margin-top: 14px;
+  border-radius: 12px;
+  padding: 12px 14px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  color: #334155;
+  font-size: 14px;
+}
+
+/* ==========================================================
+   HOOFDSTUK: RESPONSIVE
+   ========================================================== */
 
 @media (max-width: 1500px) {
   .tool-grid {
@@ -981,108 +1170,8 @@ textarea {
   .mini-day-legend {
     display: none;
   }
-}
-/* ==========================================================
-   LOGIN PAGE
-   ========================================================== */
 
-.login-page {
-  min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: linear-gradient(135deg, #1e293b, #334155);
-  padding: 20px;
-}
-
-.login-card {
-  width: 100%;
-  max-width: 420px;
-  background: #ffffff;
-  border-radius: 24px;
-  padding: 32px;
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.2);
-}
-
-.auth-header {
-  margin-bottom: 20px;
-}
-
-.auth-title {
-  margin: 0 0 8px;
-  font-size: 32px;
-  line-height: 1.1;
-  color: #1e293b;
-}
-
-.auth-subtitle {
-  margin: 0;
-  color: #64748b;
-  font-size: 14px;
-}
-
-.auth-mode-switch {
-  display: flex;
-  gap: 10px;
-  margin-bottom: 18px;
-  flex-wrap: wrap;
-}
-
-.mode-active {
-  border-color: #5b8def;
-  background: #e8eefc;
-  color: #16325c;
-}
-
-.auth-form {
-  display: grid;
-  gap: 12px;
-}
-
-.auth-input {
-  width: 100%;
-  border: 1px solid #dbe2ea;
-  border-radius: 12px;
-  padding: 14px 16px;
-  font-size: 15px;
-  background: #fff;
-  color: #1e293b;
-}
-
-.auth-input:focus {
-  outline: none;
-  border-color: #5b8def;
-  box-shadow: 0 0 0 3px rgba(91, 141, 239, 0.15);
-}
-
-.primary-btn {
-  width: 100%;
-  border: 1px solid #1e293b;
-  background: #1e293b;
-  color: #fff;
-  border-radius: 12px;
-  padding: 14px 16px;
-  cursor: pointer;
-  font-weight: 700;
-  transition: 0.15s ease;
-}
-
-.primary-btn:hover {
-  background: #162133;
-  border-color: #162133;
-}
-
-.primary-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.auth-message {
-  margin-top: 14px;
-  border-radius: 12px;
-  padding: 12px 14px;
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
-  color: #334155;
-  font-size: 14px;
+  .auth-mode-switch {
+    flex-direction: column;
+  }
 }
