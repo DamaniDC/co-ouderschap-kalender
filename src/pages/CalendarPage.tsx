@@ -363,6 +363,9 @@ export default function CalendarPage({ currentUserEmail }: Props) {
   const [notesByDate, setNotesByDate] = useState<Record<string, string>>({});
   const [hoveredNoteDate, setHoveredNoteDate] = useState<string | null>(null);
   const [openedNoteDate, setOpenedNoteDate] = useState<string | null>(null);
+  const [noteModalDate, setNoteModalDate] = useState<string | null>(null);
+  const [noteModalValue, setNoteModalValue] = useState("");
+  const [savingNote, setSavingNote] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -389,17 +392,92 @@ export default function CalendarPage({ currentUserEmail }: Props) {
   const [dragMode, setDragMode] = useState<DragMode | null>(null);
   const [baseData, setBaseData] = useState<Record<string, DayType>>({});
 
-  // ==========================================================
-  // HOOFDSTUK: UI HELPERS
-  // ==========================================================
+// ==========================================================
+// HOOFDSTUK: UI HELPERS
+// ==========================================================
 
-  function showMessage(message: string) {
-    setUiMessage(message);
-    window.clearTimeout((window as any).__msgTimer);
-    (window as any).__msgTimer = window.setTimeout(() => {
-      setUiMessage("");
-    }, 3500);
+function showMessage(message: string) {
+  setUiMessage(message);
+  window.clearTimeout((window as any).__msgTimer);
+  (window as any).__msgTimer = window.setTimeout(() => {
+    setUiMessage("");
+  }, 3500);
+}
+
+// ------------------------------
+// SUB: Notitie modal openen
+// ------------------------------
+
+function openNoteModal(dateKey: string) {
+  setNoteModalDate(dateKey);
+  setNoteModalValue(notesByDate[dateKey] || "");
+}
+
+// ------------------------------
+// SUB: Notitie modal sluiten
+// ------------------------------
+
+function closeNoteModal() {
+  if (savingNote) return;
+  setNoteModalDate(null);
+  setNoteModalValue("");
+}
+
+// ------------------------------
+// SUB: Notitie opslaan
+// ------------------------------
+
+async function saveDateNote() {
+  if (!noteModalDate) return;
+
+  const trimmed = noteModalValue.trim();
+  setSavingNote(true);
+
+  try {
+    const currentType = data[noteModalDate];
+
+    if (!currentType) {
+      showMessage("Je kan enkel een notitie toevoegen op een ingevulde datum.");
+      setSavingNote(false);
+      return;
+    }
+
+    const { error } = await supabase
+      .from("calendar_entries")
+      .upsert(
+        {
+          date: noteModalDate,
+          type: currentType,
+          note: trimmed || null,
+          updated_by: currentUserEmail,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "date" }
+      );
+
+    if (error) throw error;
+
+    setNotesByDate((prev) => {
+      const next = { ...prev };
+
+      if (trimmed) {
+        next[noteModalDate] = trimmed;
+      } else {
+        delete next[noteModalDate];
+      }
+
+      return next;
+    });
+
+    closeNoteModal();
+    showMessage(trimmed ? "Notitie opgeslagen." : "Notitie verwijderd.");
+  } catch (error) {
+    console.error("Fout bij opslaan notitie:", error);
+    showMessage("Er liep iets mis bij het opslaan van de notitie.");
+  } finally {
+    setSavingNote(false);
   }
+}
 
   // ==========================================================
   // HOOFDSTUK: DATA LADEN
@@ -1273,11 +1351,12 @@ export default function CalendarPage({ currentUserEmail }: Props) {
                         const changedLive = draftData[key] !== data[key];
                         const isToday = key === todayKey;
                         const noteText = notesByDate[key];
-                        const hasNote = Boolean(noteText?.trim());
-                        const showNote =
-                          (hoveredNoteDate === key || openedNoteDate === key) &&
-                          hasNote &&
-                          !isEditMode;
+const hasNote = Boolean(noteText?.trim());
+const hasCalendarEntry = Boolean(data[key]);
+const showNote =
+  (hoveredNoteDate === key || openedNoteDate === key) &&
+  hasNote &&
+  !isEditMode;
 
                         const titleText = changedLive
                           ? `Wijziging: ${data[key] || "leeg"} → ${draftData[key] || "leeg"}`
@@ -1323,23 +1402,33 @@ export default function CalendarPage({ currentUserEmail }: Props) {
                                 }
                               }}
                               onClick={() => {
-                                if (!isEditMode && hasNote) {
-                                  setOpenedNoteDate((prev) =>
-                                    prev === key ? null : key
-                                  );
-                                }
-                              }}
+  if (isEditMode) return;
+
+  if (hasNote) {
+    setOpenedNoteDate((prev) => (prev === key ? null : key));
+  } else {
+    setOpenedNoteDate(null);
+  }
+
+  openNoteModal(key);
+}}
                               style={{
                                 backgroundColor: cfg ? cfg.color : "#ffffff",
                                 color: cfg ? cfg.textColor : "#334155",
                                 borderColor: cfg ? cfg.color : "#e2e8f0",
                                 cursor: isEditMode
                                   ? "pointer"
-                                  : hasNote
+                                  : hasCalendarEntry
                                   ? "pointer"
                                   : "default",
                               }}
-                              title={titleText}
+                              title={
+  hasCalendarEntry
+    ? hasNote
+      ? `${titleText} • Notitie aanwezig`
+      : `${titleText} • Klik voor notitie`
+    : titleText
+}
                               type="button"
                             >
                               {date.getDate()}
@@ -1700,6 +1789,54 @@ export default function CalendarPage({ currentUserEmail }: Props) {
           </section>
         )}
       </div>
+      {noteModalDate && (
+        <div className="modal-backdrop">
+          <div className="confirm-modal note-modal">
+            <div className="confirm-modal-header">
+              <h3>Notitie bij datum</h3>
+              <p>
+                Datum: <strong>{noteModalDate}</strong>
+              </p>
+            </div>
+
+            <textarea
+              className="request-note-textarea note-modal-textarea"
+              placeholder="Typ hier een notitie voor deze datum..."
+              value={noteModalValue}
+              onChange={(e) => setNoteModalValue(e.target.value)}
+            />
+
+            <div className="confirm-actions note-modal-actions">
+              <button
+                className="ghost-btn"
+                type="button"
+                onClick={closeNoteModal}
+                disabled={savingNote}
+              >
+                Annuleren
+              </button>
+
+              <button
+                className="ghost-btn"
+                type="button"
+                onClick={() => setNoteModalValue("")}
+                disabled={savingNote}
+              >
+                Leegmaken
+              </button>
+
+              <button
+                className="primary-action-btn"
+                type="button"
+                onClick={() => void saveDateNote()}
+                disabled={savingNote}
+              >
+                {savingNote ? "Bezig..." : "Opslaan"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showClearModal && (
         <div className="modal-backdrop">

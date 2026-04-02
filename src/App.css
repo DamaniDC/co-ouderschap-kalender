@@ -985,6 +985,18 @@ button {
   max-width: 500px;
   padding: 26px;
 }
+.note-modal {
+  max-width: 560px;
+}
+
+.note-modal-textarea {
+  min-height: 160px;
+  margin-top: 8px;
+}
+
+.note-modal-actions {
+  justify-content: flex-end;
+}
 
 .confirm-modal-header {
   margin-bottom: 18px;
