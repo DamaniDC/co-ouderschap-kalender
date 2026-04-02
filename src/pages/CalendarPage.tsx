@@ -1258,26 +1258,25 @@ async function confirmDeleteRequest() {
                 <div className="edit-mode-bar">
                   <div>
                     {uiMessage ? (
-                      <div className="inline-success">
-                        {uiMessage}
-                      </div>
+                      <div className="inline-success">{uiMessage}</div>
                     ) : (
-                    <>
-                      <div className="section-title">Wijzigingen aanvragen</div>
-                      <div className="section-subtitle">
-                        Klik om wijzigingen aan de kalender in te dienen.
-                      </div>
-                    </>
-                   )}
-                  </div>
+                      <>
+                        <div className="request-header">
+                          <button
+                            type="button"
+                            className="primary-action-btn"
+                            onClick={startEditMode}
+                          >
+                            Wijzigingen aanvragen
+                          </button>
+                        </div>
 
-                  <button
-                    type="button"
-                    className="primary-action-btn"
-                    onClick={startEditMode}
-                  >
-                    Wijzigingen aanvragen
-                  </button>
+                        <div className="section-subtitle">
+                          Klik om wijzigingen aan de kalender in te dienen.
+                        </div>
+                      </>
+                    )}
+                  </div>
                 </div>
               </section>
             ) : (

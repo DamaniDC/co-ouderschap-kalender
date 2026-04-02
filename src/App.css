@@ -1254,3 +1254,8 @@ textarea {
   border: 1px solid #a7f3d0;
   margin-bottom: 10px;
 }
+.request-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 6px;
+}
