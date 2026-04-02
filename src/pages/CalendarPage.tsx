@@ -1,5 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "../supabase";
+import {
+  sendApprovedNotification,
+  sendNewRequestNotification,
+  sendRejectedNotification,
+} from "../services/notifications";
 
 type DayType =
   | "stephan"
@@ -41,6 +46,10 @@ type ChangeRequestRow = {
   reviewed_at: string | null;
   review_comment: string | null;
   request_comment: string | null;
+};
+
+type Props = {
+  currentUserEmail: string;
 };
 
 const DAY_TYPES: Record<DayType, DayTypeConfig> = {
@@ -99,13 +108,6 @@ const TOOLBAR_TYPES: DayType[] = [
 ];
 
 const WEEKDAYS = ["M", "D", "W", "D", "V", "Z", "Z"];
-
-const STEPHAN_EMAIL = "stephanjacob84@icloud.com";
-const WING_EMAIL = "juztmuzik@me.com";
-
-function getOtherParentEmail(email: string) {
-  return email === STEPHAN_EMAIL ? WING_EMAIL : STEPHAN_EMAIL;
-}
 
 function formatKey(date: Date) {
   return date.toISOString().slice(0, 10);
@@ -289,10 +291,6 @@ function renderMiniDiffCalendar(
   );
 }
 
-type Props = {
-  currentUserEmail: string;
-};
-
 export default function CalendarPage({ currentUserEmail }: Props) {
   const year = 2026;
   const months = useMemo(() => buildMonths(year), []);
@@ -316,6 +314,7 @@ export default function CalendarPage({ currentUserEmail }: Props) {
 
   const [requestComment, setRequestComment] = useState("");
   const [uiMessage, setUiMessage] = useState("");
+  const [highlightedRequestId, setHighlightedRequestId] = useState<string | null>(null);
 
   const [reviewComments, setReviewComments] = useState<Record<string, string>>(
     {}
@@ -334,24 +333,6 @@ export default function CalendarPage({ currentUserEmail }: Props) {
     (window as any).__msgTimer = window.setTimeout(() => {
       setUiMessage("");
     }, 3500);
-  }
-
-  async function sendMailNotification(params: {
-    to: string;
-    subject: string;
-    html: string;
-  }) {
-    try {
-      const { error } = await supabase.functions.invoke("send-notification", {
-        body: params,
-      });
-
-      if (error) {
-        console.error("Mail notification fout:", error);
-      }
-    } catch (error) {
-      console.error("Mail notification exception:", error);
-    }
   }
 
   async function loadLogs() {
@@ -424,6 +405,23 @@ export default function CalendarPage({ currentUserEmail }: Props) {
     void loadLogs();
     void loadRequests();
   }, []);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const requestId = params.get("requestId");
+
+    if (requestId) {
+      setActiveTab("goedkeuringen");
+      setHighlightedRequestId(requestId);
+
+      setTimeout(() => {
+        const el = document.getElementById(`request-${requestId}`);
+        if (el) {
+          el.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+      }, 500);
+    }
+  }, [requests.length]);
 
   const pendingForMe = useMemo(
     () =>
@@ -620,14 +618,18 @@ export default function CalendarPage({ currentUserEmail }: Props) {
         .map((date) => `${date}: ${nextData[date] || "leeg"}`)
         .join(" | ");
 
-      const { error } = await supabase.from("change_requests").insert({
-        requested_by: currentUserEmail,
-        changed_dates: changedDates.join(", "),
-        old_value: oldValues,
-        new_value: newValues,
-        status: "pending",
-        request_comment: comment?.trim() || null,
-      });
+      const { data: insertedRequest, error } = await supabase
+        .from("change_requests")
+        .insert({
+          requested_by: currentUserEmail,
+          changed_dates: changedDates.join(", "),
+          old_value: oldValues,
+          new_value: newValues,
+          status: "pending",
+          request_comment: comment?.trim() || null,
+        })
+        .select()
+        .single();
 
       if (error) throw error;
 
@@ -637,16 +639,11 @@ export default function CalendarPage({ currentUserEmail }: Props) {
       setDraftData(data);
       showMessage("Aanvraag verstuurd ter goedkeuring.");
 
-      await sendMailNotification({
-        to: getOtherParentEmail(currentUserEmail),
-        subject: "Nieuw wijzigingsverzoek",
-        html: `
-          <h2>Nieuw wijzigingsverzoek</h2>
-          <p><strong>Aangevraagd door:</strong> ${currentUserEmail}</p>
-          <p><strong>Datums:</strong> ${changedDates.join(", ")}</p>
-          <p><strong>Opmerking:</strong> ${comment?.trim() || "Geen opmerking"}</p>
-          <p>Open de kalender om dit verzoek goed of af te keuren.</p>
-        `,
+      await sendNewRequestNotification({
+        currentUserEmail,
+        requestId: insertedRequest.id,
+        changedDates,
+        comment: comment?.trim() || null,
       });
     } catch (error) {
       console.error("Fout bij maken voorstel:", error);
@@ -744,15 +741,13 @@ export default function CalendarPage({ currentUserEmail }: Props) {
       await loadLogs();
       showMessage("Voorstel goedgekeurd.");
 
-      await sendMailNotification({
+      await sendApprovedNotification({
         to: request.requested_by,
-        subject: "Je verzoek werd goedgekeurd",
-        html: `
-          <h2>Verzoek goedgekeurd</h2>
-          <p><strong>Datums:</strong> ${request.changed_dates}</p>
-          <p><strong>Door:</strong> ${currentUserEmail}</p>
-          <p><strong>Opmerking:</strong> ${reviewComment || "Geen opmerking"}</p>
-        `,
+        requestId: request.id,
+        requester: request.requested_by,
+        changedDates: request.changed_dates.split(", ").filter(Boolean),
+        comment: reviewComment,
+        reviewedBy: currentUserEmail,
       });
     } catch (error) {
       console.error("Fout bij goedkeuren:", error);
@@ -780,15 +775,13 @@ export default function CalendarPage({ currentUserEmail }: Props) {
       await loadRequests();
       showMessage("Voorstel afgekeurd.");
 
-      await sendMailNotification({
+      await sendRejectedNotification({
         to: request.requested_by,
-        subject: "Je verzoek werd afgekeurd",
-        html: `
-          <h2>Verzoek afgekeurd</h2>
-          <p><strong>Datums:</strong> ${request.changed_dates}</p>
-          <p><strong>Door:</strong> ${currentUserEmail}</p>
-          <p><strong>Opmerking:</strong> ${reviewComment || "Geen opmerking"}</p>
-        `,
+        requestId: request.id,
+        requester: request.requested_by,
+        changedDates: request.changed_dates.split(", ").filter(Boolean),
+        comment: reviewComment,
+        reviewedBy: currentUserEmail,
       });
     } catch (error) {
       console.error("Fout bij afkeuren:", error);
@@ -1319,7 +1312,15 @@ export default function CalendarPage({ currentUserEmail }: Props) {
               ) : (
                 <div className="logs-list">
                   {pendingForMe.map((request) => (
-                    <article key={request.id} className="log-entry">
+                    <article
+                      id={`request-${request.id}`}
+                      key={request.id}
+                      className={`log-entry ${
+                        highlightedRequestId === request.id
+                          ? "highlighted-request"
+                          : ""
+                      }`}
+                    >
                       <div className="log-entry-top">
                         <div className="log-user">{request.requested_by}</div>
                         <div className="log-time">
@@ -1395,7 +1396,15 @@ export default function CalendarPage({ currentUserEmail }: Props) {
               ) : (
                 <div className="logs-list">
                   {myPendingRequests.map((request) => (
-                    <article key={request.id} className="log-entry">
+                    <article
+                      id={`request-${request.id}`}
+                      key={request.id}
+                      className={`log-entry ${
+                        highlightedRequestId === request.id
+                          ? "highlighted-request"
+                          : ""
+                      }`}
+                    >
                       <div className="log-entry-top">
                         <div className="log-user">Aangevraagd door jou</div>
                         <div className="log-time">
@@ -1443,7 +1452,15 @@ export default function CalendarPage({ currentUserEmail }: Props) {
               ) : (
                 <div className="logs-list">
                   {handledRequests.map((request) => (
-                    <article key={request.id} className="log-entry">
+                    <article
+                      id={`request-${request.id}`}
+                      key={request.id}
+                      className={`log-entry ${
+                        highlightedRequestId === request.id
+                          ? "highlighted-request"
+                          : ""
+                      }`}
+                    >
                       <div className="log-entry-top">
                         <div className="log-user">{request.requested_by}</div>
                         <div className="log-time">
