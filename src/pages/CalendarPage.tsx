@@ -100,6 +100,13 @@ const TOOLBAR_TYPES: DayType[] = [
 
 const WEEKDAYS = ["M", "D", "W", "D", "V", "Z", "Z"];
 
+const STEPHAN_EMAIL = "stephanjacob84@icloud.com";
+const WING_EMAIL = "seongwingli@icloud.com";
+
+function getOtherParentEmail(email: string) {
+  return email === STEPHAN_EMAIL ? WING_EMAIL : STEPHAN_EMAIL;
+}
+
 function formatKey(date: Date) {
   return date.toISOString().slice(0, 10);
 }
@@ -327,6 +334,24 @@ export default function CalendarPage({ currentUserEmail }: Props) {
     (window as any).__msgTimer = window.setTimeout(() => {
       setUiMessage("");
     }, 3500);
+  }
+
+  async function sendMailNotification(params: {
+    to: string;
+    subject: string;
+    html: string;
+  }) {
+    try {
+      const { error } = await supabase.functions.invoke("send-notification", {
+        body: params,
+      });
+
+      if (error) {
+        console.error("Mail notification fout:", error);
+      }
+    } catch (error) {
+      console.error("Mail notification exception:", error);
+    }
   }
 
   async function loadLogs() {
@@ -611,6 +636,18 @@ export default function CalendarPage({ currentUserEmail }: Props) {
       setIsEditMode(false);
       setDraftData(data);
       showMessage("Aanvraag verstuurd ter goedkeuring.");
+
+      await sendMailNotification({
+        to: getOtherParentEmail(currentUserEmail),
+        subject: "Nieuw wijzigingsverzoek",
+        html: `
+          <h2>Nieuw wijzigingsverzoek</h2>
+          <p><strong>Aangevraagd door:</strong> ${currentUserEmail}</p>
+          <p><strong>Datums:</strong> ${changedDates.join(", ")}</p>
+          <p><strong>Opmerking:</strong> ${comment?.trim() || "Geen opmerking"}</p>
+          <p>Open de kalender om dit verzoek goed of af te keuren.</p>
+        `,
+      });
     } catch (error) {
       console.error("Fout bij maken voorstel:", error);
       showMessage("Er liep iets mis bij het maken van de aanvraag.");
@@ -706,6 +743,17 @@ export default function CalendarPage({ currentUserEmail }: Props) {
       await loadRequests();
       await loadLogs();
       showMessage("Voorstel goedgekeurd.");
+
+      await sendMailNotification({
+        to: request.requested_by,
+        subject: "Je verzoek werd goedgekeurd",
+        html: `
+          <h2>Verzoek goedgekeurd</h2>
+          <p><strong>Datums:</strong> ${request.changed_dates}</p>
+          <p><strong>Door:</strong> ${currentUserEmail}</p>
+          <p><strong>Opmerking:</strong> ${reviewComment || "Geen opmerking"}</p>
+        `,
+      });
     } catch (error) {
       console.error("Fout bij goedkeuren:", error);
       showMessage("Er liep iets mis bij het goedkeuren.");
@@ -731,6 +779,17 @@ export default function CalendarPage({ currentUserEmail }: Props) {
       setReviewComments((prev) => ({ ...prev, [request.id]: "" }));
       await loadRequests();
       showMessage("Voorstel afgekeurd.");
+
+      await sendMailNotification({
+        to: request.requested_by,
+        subject: "Je verzoek werd afgekeurd",
+        html: `
+          <h2>Verzoek afgekeurd</h2>
+          <p><strong>Datums:</strong> ${request.changed_dates}</p>
+          <p><strong>Door:</strong> ${currentUserEmail}</p>
+          <p><strong>Opmerking:</strong> ${reviewComment || "Geen opmerking"}</p>
+        `,
+      });
     } catch (error) {
       console.error("Fout bij afkeuren:", error);
       showMessage("Er liep iets mis bij het afkeuren.");
