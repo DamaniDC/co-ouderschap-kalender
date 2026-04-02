@@ -756,6 +756,8 @@ export default function CalendarPage({ currentUserEmail }: Props) {
         requestId: insertedRequest.id,
         changedDates,
         comment: comment?.trim() || null,
+        oldValue: oldValues,
+        newValue: newValues,
       });
     } catch (error) {
       console.error("Fout bij maken voorstel:", error);
@@ -849,6 +851,8 @@ export default function CalendarPage({ currentUserEmail }: Props) {
         changedDates: request.changed_dates.split(", ").filter(Boolean),
         comment: reviewComment,
         reviewedBy: currentUserEmail,
+        oldValue: request.old_value,
+        newValue: request.new_value,
       });
     } catch (error) {
       console.error("Fout bij goedkeuren:", error);
@@ -887,6 +891,8 @@ export default function CalendarPage({ currentUserEmail }: Props) {
         changedDates: request.changed_dates.split(", ").filter(Boolean),
         comment: reviewComment,
         reviewedBy: currentUserEmail,
+        oldValue: request.old_value,
+        newValue: request.new_value,
       });
     } catch (error) {
       console.error("Fout bij afkeuren:", error);

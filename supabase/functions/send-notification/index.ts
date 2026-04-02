@@ -36,16 +36,19 @@ serve(async (req: Request) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        from: "Co-Ouderschap Kalender <onboarding@resend.dev>",
+        from: "Co-Ouderschap Kalender <info@improlytic.com>",
         to,
         subject,
         html,
       }),
     });
 
-    const data = await res.json();
+    const text = await res.text();
 
-    return new Response(JSON.stringify(data), {
+    console.log("RESEND STATUS:", res.status);
+    console.log("RESEND RESPONSE:", text);
+
+    return new Response(text, {
       status: res.ok ? 200 : res.status,
       headers: {
         "Content-Type": "application/json",
@@ -53,6 +56,8 @@ serve(async (req: Request) => {
       },
     });
   } catch (error: any) {
+    console.log("FUNCTION ERROR:", error?.message || "Onbekende fout");
+
     return new Response(
       JSON.stringify({ error: error?.message || "Onbekende fout" }),
       {
