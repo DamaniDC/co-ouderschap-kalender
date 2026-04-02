@@ -101,7 +101,7 @@ const TOOLBAR_TYPES: DayType[] = [
 const WEEKDAYS = ["M", "D", "W", "D", "V", "Z", "Z"];
 
 const STEPHAN_EMAIL = "stephanjacob84@icloud.com";
-const WING_EMAIL = "seongwingli@icloud.com";
+const WING_EMAIL = "juztmuzik@me.com";
 
 function getOtherParentEmail(email: string) {
   return email === STEPHAN_EMAIL ? WING_EMAIL : STEPHAN_EMAIL;
